@@ -77,9 +77,8 @@
 <body
     class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display min-h-screen overflow-hidden flex flex-col relative"
     style="background: url('/resources/designs/ODS_Background.png') center/cover no-repeat fixed;">
-    <!-- Header Section -->
-    <header class="w-full pt-10 pb-6 px-10 flex flex-col items-center justify-center z-10">
-        <p class="text-white text-3xl tracking-wide">ODS Player initiation in progress...</p>
+    <!-- Header Section - Removed subtitle, keeping space for logo alignment -->
+    <header class="w-full pt-32 pb-6 px-10 flex flex-col items-center justify-center z-10">
     </header>
 
     <!-- Loading State -->
@@ -169,6 +168,13 @@
         </div>
     </main>
 
+
+    <!-- Status Message - Positioned between main content and footer -->
+    <div class="w-full flex justify-center pb-6 z-10">
+        <p class="text-white tracking-wide" style="font-size: 1.65rem;">ODS Player - Pairing in progress...</p>
+    </div>
+
+
     <!-- Footer / Status Pill -->
     <footer class="pb-12 pt-6 w-full flex justify-center z-10">
         <div id="statusPill" class="glass-pill px-5 py-2.5 rounded-full inline-flex items-center gap-2.5 shadow-lg">
@@ -191,6 +197,52 @@
     </div>
 
     <script>
+        // ========================================
+        // ENTERPRISE SECURITY: COMPLETE KEYBOARD LOCKDOWN
+        // ========================================
+        // Block ALL keyboard shortcuts except Ctrl+Alt+Shift+T for admin terminal
+
+        document.addEventListener('keydown', function (e) {
+            // Allow only Ctrl+Alt+Shift+T for admin terminal (future feature)
+            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'T') {
+                console.log('[SECURITY] Admin terminal shortcut detected (not yet implemented)');
+                return; // Allow this combination
+            }
+
+            // Block ALL other keyboard shortcuts
+            if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+
+            // Block function keys (F1-F12)
+            if (e.key.startsWith('F') && e.key.length <= 3) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+
+            // Block other dangerous keys
+            const blockedKeys = ['Escape', 'PrintScreen', 'ContextMenu'];
+            if (blockedKeys.includes(e.key)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }, true); // Use capture phase
+
+        // Block right-click context menu
+        document.addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }, true);
+
+        // ========================================
+        // DEVICE PAIRING LOGIC
+        // ========================================
         const API_URL = 'http://209.38.118.127:3001';
         const WS_URL = 'http://209.38.118.127:3001';
 

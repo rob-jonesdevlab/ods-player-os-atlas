@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>ODS Player Setup</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3c83f6",
+                        "background-light": "#f8fafc",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+</head>
+
+<body class="bg-background-light text-slate-900 font-display min-h-screen overflow-hidden flex flex-col relative"
+    style="background: url('/resources/designs/ODS_Background.png') center/cover no-repeat fixed;">
+    <!-- Header Section - Removed subtitle -->
+    <header class="w-full pt-32 pb-6 px-10 flex flex-col items-center justify-center z-10">
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col items-center justify-center w-full px-4 z-10">
+        <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center max-w-2xl w-full shadow-2xl">
+            <!-- Title -->
+            <h2 class="text-3xl font-bold text-gray-900 mb-3">Network Setup</h2>
+            <p class="text-gray-700 text-lg mb-10 text-center max-w-md">
+                Scan this QR code with your phone to configure WiFi
+            </p>
+
+            <!-- QR Code Section -->
+            <div id="qrcode" class="bg-white p-6 rounded-xl shadow-lg mb-8"></div>
+
+            <!-- Status -->
+            <div id="status" class="text-gray-600 text-base text-center max-w-md">
+                Waiting for network configuration...
+            </div>
+        </div>
+    </main>
+
+
+    <!-- Status Message -->
+    <div class="w-full flex justify-center pb-6 z-10">
+        <p class="text-white tracking-wide" style="font-size: 1.65rem;">ODS Player - Network configuration in
+            progress...</p>
+    </div>
+
+
+    <!-- Footer / Status Pill -->
+    <footer class="pb-12 pt-6 w-full flex justify-center z-10">
+        <div class="glass-pill px-5 py-2.5 rounded-full inline-flex items-center gap-2.5 shadow-lg">
+            <span class="relative flex h-2.5 w-2.5">
+                <span
+                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+            </span>
+            <span class="text-gray-800 text-xs font-medium tracking-wide">Waiting for network...</span>
+        </div>
+    </footer>
+
+    <script>
+        // ========================================
+        // ENTERPRISE SECURITY: COMPLETE KEYBOARD LOCKDOWN
+        // ========================================
+
+        document.addEventListener('keydown', function (e) {
+            // Allow only Ctrl+Alt+Shift+T for admin terminal (future feature)
+            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'T') {
+                console.log('[SECURITY] Admin terminal shortcut detected (not yet implemented)');
+                return;
+            }
+
+            // Block ALL other keyboard shortcuts
+            if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                return false;
+            }
+
+            // Block function keys
+            if (e.key.startsWith('F') && e.key.length <= 3) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+
+            // Block dangerous keys
+            const blockedKeys = ['Escape', 'PrintScreen', 'ContextMenu'];
+            if (blockedKeys.includes(e.key)) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        }, true);
+
+        // Block right-click
+        document.addEventListener('contextmenu', function (e) {
+            e.preventDefault();
+            return false;
+        }, true);
+
+        // ========================================
+        // NETWORK SETUP LOGIC
+        // ========================================
+        // Fetch and display QR code
+        fetch('/api/qr')
+            .then(res => res.json())
+            .then(data => {
+                const img = document.createElement('img');
+                img.src = data.qrCode;
+                img.style.width = '300px';
+                img.style.height = '300px';
+                img.style.display = 'block';
+                document.getElementById('qrcode').appendChild(img);
+            })
+            .catch(err => {
+                document.getElementById('status').textContent = 'Error loading QR code';
+                document.getElementById('status').classList.add('text-red-600');
+            });
+
+        // Poll for network connection
+        setInterval(async () => {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                if (data.wifi_connected) {
+                    document.getElementById('status').textContent =
+                        `Connected to ${data.ssid}! Proceeding with enrollment...`;
+                    document.getElementById('status').classList.remove('text-gray-600');
+                    document.getElementById('status').classList.add('text-emerald-600');
+
+                    // Update status pill
+                    document.querySelector('footer .glass-pill').innerHTML = `
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        <span class="text-gray-800 text-xs font-medium tracking-wide">Connected!</span>
+                    `;
+
+                    setTimeout(() => {
+                        window.location.href = '/pairing.html';
+                    }, 3000);
+                } else if (data.ethernet_connected) {
+                    document.getElementById('status').textContent =
+                        'Ethernet connected! Proceeding with enrollment...';
+                    document.getElementById('status').classList.remove('text-gray-600');
+                    document.getElementById('status').classList.add('text-emerald-600');
+
+                    // Update status pill
+                    document.querySelector('footer .glass-pill').innerHTML = `
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        <span class="text-gray-800 text-xs font-medium tracking-wide">Connected!</span>
+                    `;
+
+                    setTimeout(() => {
+                        window.location.href = '/pairing.html';
+                    }, 3000);
+                }
+            } catch (e) {
+                // Network not ready yet
+            }
+        }, 2000);
+    </script>
+</body>
+
+</html>
