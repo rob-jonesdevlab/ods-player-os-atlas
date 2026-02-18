@@ -344,7 +344,7 @@ SCRIPT
     cat > /usr/local/bin/ods-kiosk-wrapper.sh << 'SCRIPT'
 #!/bin/bash
 # ODS Kiosk Wrapper — direct page loading (no loader iframe)
-# Handles: DRM wait → X start → Chromium → Plymouth quit
+# Handles: DRM wait → Plymouth deactivate → X start → Chromium → Plymouth quit
 LOG_DIR="/home/signage/ODS/logs/boot"
 mkdir -p "$LOG_DIR"
 BOOT_LOG="$LOG_DIR/boot_$(date +%Y%m%d_%H%M%S).log"
@@ -377,7 +377,7 @@ log "Plymouth deactivated (framebuffer retained)"
 
 # Start X on VT1 (same as Plymouth — avoids white flash from VT switch)
 export HOME=/home/signage
-Xorg :0 -nolisten tcp -background none vt1 &
+Xorg :0 -nolisten tcp -novtswitch -background none vt1 &
 sleep 0.5
 export DISPLAY=:0
 # Paint black IMMEDIATELY — before anything else renders (was 2s gap before)
@@ -573,6 +573,18 @@ EOF
 
 configure_boot() {
     log "🔧 Step 8: Configuring boot parameters & sleep prevention..."
+
+    # Disable VT switching — prevents Ctrl+Alt+Fn from opening white TTY pages
+    # This also fixes the white flash during splash→kiosk transition
+    log "  → Disabling VT switching (prevents white TTY flash)..."
+    mkdir -p /etc/X11/xorg.conf.d
+    cat > /etc/X11/xorg.conf.d/10-no-vtswitch.conf << 'XORGCFG'
+Section "ServerFlags"
+    Option "DontVTSwitch" "true"
+    Option "DontZap"      "true"
+EndSection
+XORGCFG
+    log "  ✅ VT switching disabled (Xorg config + -novtswitch flag)"
 
     # RPi5 uses /boot/firmware/cmdline.txt (not armbianEnv.txt) for kernel params
     # This is the REAL boot config — armbianEnv.txt extraargs are NOT applied on RPi
