@@ -152,8 +152,8 @@
         // KEYBOARD HANDLER (loader level)
         // ========================================
         document.addEventListener('keydown', function (e) {
-            // Ctrl+Alt+Shift+F5 → toggle system config
-            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'F5') {
+            // Ctrl+Alt+Shift+O → toggle system config (O = Options)
+            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'O') {
                 e.preventDefault();
                 if (currentPage === 'system_config') {
                     // Return to previous page (default: network_setup)

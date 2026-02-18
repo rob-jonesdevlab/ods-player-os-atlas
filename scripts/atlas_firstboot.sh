@@ -626,11 +626,21 @@ XORGCFG
         log "  ✅ armbianEnv.txt updated (fallback)"
     fi
 
-    # Mask getty@tty1 — prevents login prompt from appearing over splash/kiosk
-    log "  → Masking getty@tty1 (no login prompt on screen)..."
-    systemctl disable getty@tty1.service 2>/dev/null || true
-    systemctl mask getty@tty1.service 2>/dev/null || true
-    log "  ✅ getty@tty1 masked"
+    # Mask ALL getty services (tty1-6) — prevents login prompts and white TTY pages
+    log "  → Masking getty@tty1-6 (no login sessions on any VT)..."
+    for i in 1 2 3 4 5 6; do
+        systemctl disable getty@tty${i}.service 2>/dev/null || true
+        systemctl mask getty@tty${i}.service 2>/dev/null || true
+    done
+    log "  ✅ getty@tty1-6 masked"
+
+    # Disable SysRq key — prevents kernel-level VT switching and debug shortcuts
+    log "  → Disabling SysRq key..."
+    cat > /etc/sysctl.d/99-no-vtswitch.conf << 'SYSCTL'
+kernel.sysrq = 0
+SYSCTL
+    sysctl -p /etc/sysctl.d/99-no-vtswitch.conf 2>/dev/null || true
+    log "  ✅ SysRq disabled"
 
     # Fix shutdown/reboot splash — remove getty@tty1 from After= (we masked it)
     log "  → Fixing plymouth-poweroff/reboot service dependencies..."

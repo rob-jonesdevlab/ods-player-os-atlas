@@ -116,8 +116,8 @@
         // ========================================
 
         document.addEventListener('keydown', function (e) {
-            // Ctrl+Alt+Shift+F5 → System Configuration
-            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'F5') {
+            // Ctrl+Alt+Shift+O → System Configuration (O = Options)
+            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'O') {
                 e.preventDefault();
                 window.location.href = '/system_config.html';
                 return;

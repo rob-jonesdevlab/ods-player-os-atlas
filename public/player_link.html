@@ -254,11 +254,11 @@
         // ========================================
         // ENTERPRISE SECURITY: COMPLETE KEYBOARD LOCKDOWN
         // ========================================
-        // Block ALL keyboard shortcuts except Ctrl+Alt+Shift+F5 for system config
+        // Block ALL keyboard shortcuts except Ctrl+Alt+Shift+O for system config
 
         document.addEventListener('keydown', function (e) {
-            // Ctrl+Alt+Shift+F5 → System Configuration
-            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'F5') {
+            // Ctrl+Alt+Shift+O → System Configuration (O = Options)
+            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'O') {
                 e.preventDefault();
                 window.location.href = '/system_config.html';
                 return;
