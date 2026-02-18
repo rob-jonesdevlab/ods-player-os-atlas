@@ -371,18 +371,47 @@ while [ ! -e /dev/dri/card* ] 2>/dev/null; do
 done
 log "DRM device ready (${ELAPSED}s)"
 
-# Deactivate Plymouth (releases DRM for Xorg but keeps framebuffer splash)
-plymouth deactivate 2>/dev/null || true
-log "Plymouth deactivated (framebuffer retained)"
+# ── TTY FLASH FIX ──────────────────────────────────────────────────────
+# Paint VT1 completely black BEFORE Plymouth releases DRM.
+# Without this, the bare VT1 console (white/grey) flashes briefly
+# during the Plymouth→Xorg handoff.
+log "Preparing black VT1 for seamless transition..."
 
-# Start X on VT1 (same as Plymouth — avoids white flash from VT switch)
+# 1) Set VT1 text colors to black-on-black and hide cursor
+export TERM=linux
+setterm --foreground black --background black --cursor off > /dev/tty1 2>/dev/null || true
+
+# 2) Clear the screen to the new background color (black)
+printf '\033[2J\033[H' > /dev/tty1 2>/dev/null || true
+
+# 3) Suppress all console output to VT1
+echo 0 > /proc/sys/kernel/printk 2>/dev/null || true
+stty -echo -F /dev/tty1 2>/dev/null || true
+
+# 4) Fill framebuffer with black pixels (belt-and-suspenders)
+dd if=/dev/zero of=/dev/fb0 bs=65536 count=128 conv=notrunc 2>/dev/null || true
+
+log "VT1 pre-painted black"
+
+# Deactivate Plymouth (releases DRM — VT1 is already black, no flash)
+plymouth deactivate 2>/dev/null || true
+log "Plymouth deactivated (VT1 is black)"
+
+# Start X on VT1 (same VT — no VT switch needed)
 export HOME=/home/signage
 Xorg :0 -nolisten tcp -novtswitch -background none vt1 &
-sleep 0.5
+
+# Wait for Xorg to be ready (tight loop instead of fixed sleep)
+for i in $(seq 1 40); do
+    if xdpyinfo -display :0 >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.05
+done
 export DISPLAY=:0
-# Paint black IMMEDIATELY — before anything else renders (was 2s gap before)
+
+# Paint X root window black immediately
 xsetroot -solid "#000000"
-sleep 1
 log "X server started on VT1, root window black"
 
 # Disable screen blanking/DPMS immediately after X starts
