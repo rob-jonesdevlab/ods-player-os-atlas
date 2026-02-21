@@ -17,7 +17,7 @@
 │   ├── atlas_firstboot.sh
 │   ├── atlas-firstboot.service
 │   └── atlas_secrets.conf                                      # NOT in git
-└── ods-atlas-rpi5-golden-v5.img                               # Output (built)
+└── ods-atlas-golden-v7-OPENBOX.img                               # Output (built)
 ```
 
 ### `atlas_secrets.conf` (template)
@@ -68,30 +68,30 @@ git -C ods-player-os-atlas pull origin main
 ### 4. Run Build
 ```bash
 # Remove old output
-sudo -A rm -f ~/atlas-build/ods-atlas-rpi5-golden-v5.img
+sudo -A rm -f ~/atlas-build/ods-atlas-golden-v7-OPENBOX.img
 
 # Build (MUST pass explicit paths — sudo changes $HOME to /root)
 cd ~/atlas-build
 sudo -A bash ods-player-os-atlas/scripts/inject_atlas.sh \
   /home/jones-dev-lab/atlas-build/Armbian_26.2.1_Rpi4b_trixie_current_6.18.9_minimal.img \
-  /home/jones-dev-lab/atlas-build/ods-atlas-rpi5-golden-v5.img
+  /home/jones-dev-lab/atlas-build/ods-atlas-golden-v7-OPENBOX.img
 ```
 
 ### 5. Transfer to Mac
 ```bash
 # From Mac:
-scp jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-rpi5-golden-v5.img ~/Desktop/
+scp jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-golden-v7-OPENBOX.img ~/Desktop/
 
 # Or with sshpass for scripted transfer:
 SSHPASS='mnbvcxz!!!' sshpass -e scp -o StrictHostKeyChecking=no \
-  jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-rpi5-golden-v5.img ~/Desktop/
+  jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-golden-v7-OPENBOX.img ~/Desktop/
 ```
 
 ### 6. Flash to SD Card
 Use Raspberry Pi Imager or:
 ```bash
 # macOS (find disk with diskutil list)
-sudo dd if=~/Desktop/ods-atlas-rpi5-golden-v5.img of=/dev/rdiskN bs=4m status=progress
+sudo dd if=~/Desktop/ods-atlas-golden-v7-OPENBOX.img of=/dev/rdiskN bs=4m status=progress
 ```
 
 ---
@@ -111,6 +111,6 @@ sudo dd if=~/Desktop/ods-atlas-rpi5-golden-v5.img of=/dev/rdiskN bs=4m status=pr
 | Name | Meaning |
 |------|---------|
 | `ods-atlas-rpi5-golden.img` | Default output (no version suffix) |
-| `ods-atlas-rpi5-golden-v5.img` | Versioned output (current) |
+| `ods-atlas-golden-v7-OPENBOX.img` | Versioned output (current) |
 
 Always build with an explicit version suffix to avoid overwriting the default.
