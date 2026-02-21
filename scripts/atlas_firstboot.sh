@@ -100,7 +100,10 @@ install_packages() {
         chromium \
         xserver-xorg \
         x11-xserver-utils \
-        matchbox-window-manager \
+        openbox \
+        xdotool \
+        xterm \
+        jq \
         unclutter \
         plymouth \
         plymouth-themes \
@@ -243,22 +246,63 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-    # --- ods-plymouth-hold.service ---
+    # --- ods-plymouth-hold.service (Issue #1 fix: poll-based, not fixed timer) ---
     cat > /etc/systemd/system/ods-plymouth-hold.service << 'EOF'
 [Unit]
-Description=ODS Plymouth Hold - Keep splash until kiosk starts
+Description=ODS Plymouth Hold - Keep splash until kiosk signals readiness
 DefaultDependencies=no
 After=plymouth-start.service
 Before=getty@tty1.service
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sleep 15
+ExecStart=/bin/bash -c 'for i in $(seq 1 60); do [ -f /tmp/ods-kiosk-starting ] && break; sleep 0.5; done; sleep 2'
 RemainAfterExit=yes
-TimeoutStartSec=30
+TimeoutStartSec=45
 
 [Install]
 WantedBy=sysinit.target
+EOF
+
+    # --- ods-dpms-enforce.service (Issue #4 fix: Layer 5a — periodic DPMS kill) ---
+    cat > /etc/systemd/system/ods-dpms-enforce.service << 'EOF'
+[Unit]
+Description=ODS DPMS Enforcement (Layer 5a - periodic sleep prevention)
+
+[Service]
+Type=oneshot
+User=root
+Environment=DISPLAY=:0
+ExecStart=/bin/bash -c "xset -dpms; xset s off; xset s noblank; xdotool key ctrl 2>/dev/null || true"
+EOF
+
+    cat > /etc/systemd/system/ods-dpms-enforce.timer << 'EOF'
+[Unit]
+Description=Enforce DPMS off every 5 minutes
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=300
+
+[Install]
+WantedBy=timers.target
+EOF
+
+    # --- ods-display-config.service (Upgrade B: dual-monitor + portrait) ---
+    cat > /etc/systemd/system/ods-display-config.service << 'EOF'
+[Unit]
+Description=ODS Display Configuration (xrandr)
+After=ods-kiosk.service
+
+[Service]
+Type=oneshot
+User=root
+Environment=DISPLAY=:0
+ExecStart=/usr/local/bin/ods-display-config.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target
 EOF
 
     # --- ods-hide-tty.service ---
@@ -304,8 +348,10 @@ EOF
     systemctl enable ods-plymouth-hold.service
     systemctl enable ods-hide-tty.service
     systemctl enable ods-shutdown-splash.service
+    systemctl enable ods-dpms-enforce.timer
+    systemctl enable ods-display-config.service
 
-    log "  ✅ All 6 services deployed and enabled"
+    log "  ✅ All 8 services deployed and enabled"
 }
 
 # ─── Step 6: Deploy Kiosk Scripts ──────────────────────────────────────────
@@ -343,8 +389,8 @@ SCRIPT
     # --- ods-kiosk-wrapper.sh ---
     cat > /usr/local/bin/ods-kiosk-wrapper.sh << 'SCRIPT'
 #!/bin/bash
-# ODS Kiosk Wrapper — direct page loading (no loader iframe)
-# Handles: DRM wait → Plymouth deactivate → X start → Chromium → Plymouth quit
+# ODS Kiosk Wrapper v6 — Openbox + multi-window + 4-layer sleep prevention
+# Handles: DRM wait → Plymouth deactivate → X start → Openbox → Chromium → Plymouth quit
 LOG_DIR="/home/signage/ODS/logs/boot"
 mkdir -p "$LOG_DIR"
 BOOT_LOG="$LOG_DIR/boot_$(date +%Y%m%d_%H%M%S).log"
@@ -356,7 +402,11 @@ log() {
     echo "$msg"
 }
 
-log "Starting ODS kiosk wrapper..."
+log "Starting ODS kiosk wrapper v6..."
+
+# Signal plymouth-hold that kiosk is starting (Issue #1 fix)
+touch /tmp/ods-kiosk-starting
+log "Plymouth readiness signal sent"
 
 # Wait for DRM display
 TIMEOUT=30
@@ -373,8 +423,6 @@ log "DRM device ready (${ELAPSED}s)"
 
 # ── TTY FLASH FIX ──────────────────────────────────────────────────────
 # Paint VT1 completely black BEFORE Plymouth releases DRM.
-# Without this, the bare VT1 console (white/grey) flashes briefly
-# during the Plymouth→Xorg handoff.
 log "Preparing black VT1 for seamless transition..."
 
 # 1) Set VT1 text colors to black-on-black and hide cursor
@@ -414,15 +462,26 @@ export DISPLAY=:0
 xsetroot -solid "#000000"
 log "X server started on VT1, root window black"
 
-# Disable screen blanking/DPMS immediately after X starts
+# ── SLEEP PREVENTION — Layer 3 (X11 xset) ──────────────────────────────
 xset -dpms 2>/dev/null || true
 xset s off 2>/dev/null || true
 xset s noblank 2>/dev/null || true
-log "Screen blanking/DPMS disabled"
+log "Layer 3: Screen blanking/DPMS disabled via xset"
 
-# Window manager and cursor hide (WHITE FLASH FIX: -use_cursor no)
-matchbox-window-manager -use_titlebar no -use_cursor no &
+# ── BLACK OVERLAY — Issue #2 fix ──────────────────────────────────────
+# Fullscreen black window masks the gap between Plymouth and Chromium
+xterm -fullscreen -bg black -fg black -e "sleep 30" &
+BLACK_OVERLAY_PID=$!
+log "Black overlay launched (PID: $BLACK_OVERLAY_PID)"
+
+# ── WINDOW MANAGER — Upgrade A: Openbox (multi-window support) ────────
+openbox --config-file /etc/ods/openbox-rc.xml &
 unclutter -idle 0.01 -root &
+log "Openbox window manager started"
+
+# ── DISPLAY CONFIG — Upgrade B: orientation + dual-monitor ────────────
+/usr/local/bin/ods-display-config.sh 2>/dev/null || true
+log "Display configuration applied"
 
 # Detect screen resolution and set scale
 SCREEN_W=$(xrandr 2>/dev/null | grep '*' | head -1 | awk '{print $1}' | cut -dx -f1)
@@ -439,7 +498,7 @@ else
 fi
 log "Screen width: ${SCREEN_W}, Scale factor: ${ODS_SCALE}"
 
-# Start the kiosk
+# Start the kiosk (primary screen)
 /usr/local/bin/start-kiosk.sh &
 KIOSK_PID=$!
 log "Chromium launched (PID: $KIOSK_PID)"
@@ -464,6 +523,10 @@ if [ -f "$SIGNAL_FILE" ]; then
     log "Page ready signal received"
 fi
 
+# Kill black overlay now that Chromium is visible (Issue #2 fix)
+kill $BLACK_OVERLAY_PID 2>/dev/null || true
+log "Black overlay dismissed"
+
 # Give Chromium extra time to finish rendering
 sleep 2
 log "Paint delay complete, starting transition"
@@ -472,6 +535,9 @@ log "Paint delay complete, starting transition"
 log "TRANSITION: quitting plymouth (X already on VT1)..."
 plymouth quit 2>/dev/null || true
 log "TRANSITION: plymouth quit. Kiosk active."
+
+# Clean up boot signals
+rm -f /tmp/ods-kiosk-starting /tmp/ods-loader-ready
 
 # Clean up old boot logs (keep 7 days)
 find "$LOG_DIR" -name "boot_*.log" -type f -mtime +7 -delete 2>/dev/null || true
@@ -494,7 +560,136 @@ printf "\033[?25l" > /dev/tty1 2>/dev/null || true
 SCRIPT
     chmod +x /usr/local/bin/hide-tty.sh
 
-    log "  ✅ Kiosk scripts deployed"
+    # --- .xprofile (Issue #4 fix: Layer 4 — login persistence) ---
+    cat > /home/signage/.xprofile << 'XPROFILE'
+# ODS Sleep Prevention (Layer 4 - login persistence)
+# Adapted from legacy ods_power_mgr.sh
+xset s off
+xset s noblank
+xset -dpms
+XPROFILE
+    chown signage:signage /home/signage/.xprofile
+    log "  ✅ Layer 4 .xprofile deployed"
+
+    # --- ods-display-config.sh (Upgrade B: dual-monitor + portrait) ---
+    cat > /usr/local/bin/ods-display-config.sh << 'SCRIPT'
+#!/bin/bash
+# ODS Display Configuration — reads layout JSON, applies xrandr
+export DISPLAY=:0
+CONFIG_DIR="/home/signage/ODS/config/layout"
+CURRENT_MODE=$(cat "$CONFIG_DIR/.current_mode" 2>/dev/null || echo "single_hd_landscape")
+
+CONFIG_FILE="$CONFIG_DIR/ods_mode_${CURRENT_MODE}.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "[DISPLAY] No config for mode $CURRENT_MODE, defaulting to single screen"
+    exit 0
+fi
+
+# Read orientation from config
+ORIENTATION=$(jq -r '.monitor_config.orientation // "landscape"' "$CONFIG_FILE")
+NUM_SCREENS=$(jq -r '.windows | length' "$CONFIG_FILE")
+
+echo "[DISPLAY] Mode: $CURRENT_MODE, Orientation: $ORIENTATION, Screens: $NUM_SCREENS"
+
+# Apply xrandr based on config
+case "$ORIENTATION" in
+    portrait)
+        xrandr --output HDMI-1 --mode 1920x1080 --rotate left 2>/dev/null || true
+        if [ "$NUM_SCREENS" -ge 2 ]; then
+            xrandr --output HDMI-2 --mode 1920x1080 --rotate left --right-of HDMI-1 2>/dev/null || true
+        fi
+        ;;
+    landscape|*)
+        xrandr --output HDMI-1 --mode 1920x1080 --rotate normal 2>/dev/null || true
+        if [ "$NUM_SCREENS" -ge 2 ]; then
+            xrandr --output HDMI-2 --mode 1920x1080 --rotate normal --right-of HDMI-1 2>/dev/null || true
+        fi
+        ;;
+esac
+echo "[DISPLAY] xrandr configuration applied"
+SCRIPT
+    chmod +x /usr/local/bin/ods-display-config.sh
+
+    # --- Openbox config (Upgrade A: kiosk window rules) ---
+    mkdir -p /etc/ods
+    cat > /etc/ods/openbox-rc.xml << 'OBXML'
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <resistance><strength>0</strength></resistance>
+  <focus><followMouse>no</followMouse></focus>
+  <placement><policy>Smart</policy></placement>
+  <desktops><number>1</number></desktops>
+
+  <!-- No decorations on any window by default (kiosk mode) -->
+  <applications>
+    <application class="*">
+      <decor>no</decor>
+      <maximized>yes</maximized>
+    </application>
+    <!-- Admin terminal: decorated, always-on-top, centered -->
+    <application class="XTerm" title="ODS Admin*">
+      <decor>yes</decor>
+      <maximized>no</maximized>
+      <layer>above</layer>
+      <size><width>800</width><height>600</height></size>
+      <position force="yes"><x>center</x><y>center</y></position>
+    </application>
+  </applications>
+
+  <!-- No keybindings (all keyboard handled by Chromium JavaScript) -->
+  <keyboard/>
+  <mouse/>
+</openbox_config>
+OBXML
+    log "  ✅ Openbox config deployed to /etc/ods/openbox-rc.xml"
+
+    # --- Display layout configs (Upgrade B: initial modes) ---
+    mkdir -p /home/signage/ODS/config/layout
+    cat > /home/signage/ODS/config/layout/ods_mode_single_hd_landscape.json << 'LJSON'
+{
+  "mode": "single_hd_landscape",
+  "description": "Single HD monitor, landscape, 1 fullscreen Chromium",
+  "windows": [
+    { "screen": 0, "position": "fullscreen", "url": "http://localhost:8080/network_setup.html" }
+  ],
+  "monitor_config": {
+    "orientation": "landscape",
+    "mapping": { "screen_0": "HDMI-1" }
+  }
+}
+LJSON
+    cat > /home/signage/ODS/config/layout/ods_mode_single_hd_portrait.json << 'LJSON'
+{
+  "mode": "single_hd_portrait",
+  "description": "Single HD monitor, portrait (rotated left)",
+  "windows": [
+    { "screen": 0, "position": "fullscreen", "url": "http://localhost:8080/network_setup.html" }
+  ],
+  "monitor_config": {
+    "orientation": "portrait",
+    "mapping": { "screen_0": "HDMI-1" }
+  }
+}
+LJSON
+    cat > /home/signage/ODS/config/layout/ods_mode_dual_hd_landscape.json << 'LJSON'
+{
+  "mode": "dual_hd_landscape",
+  "description": "Dual HD monitors, landscape, 1 Chromium per screen",
+  "windows": [
+    { "screen": 0, "position": "fullscreen", "url": "http://localhost:8080/network_setup.html" },
+    { "screen": 1, "position": "fullscreen", "url": "http://localhost:8080/network_setup.html" }
+  ],
+  "monitor_config": {
+    "orientation": "landscape",
+    "mapping": { "screen_0": "HDMI-1", "screen_1": "HDMI-2" }
+  }
+}
+LJSON
+    echo "single_hd_landscape" > /home/signage/ODS/config/layout/.current_mode
+    chown -R signage:signage /home/signage/ODS/config
+    log "  ✅ Display layout configs deployed (3 modes)"
+
+    log "  ✅ Kiosk scripts deployed (v6 — Openbox + 4-layer sleep prevention)"
 }
 
 # ─── Step 7: Install Plymouth ODS Theme ────────────────────────────────────

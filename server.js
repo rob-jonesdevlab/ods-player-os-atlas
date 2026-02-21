@@ -20,10 +20,12 @@ app.get('/api/status', (req, res) => {
         exec('ip route | grep default', (error, stdout) => {
             // Check for both eth0 (standard) and end0 (Armbian Pi5)
             const ethernet_connected = stdout.includes('eth0') || stdout.includes('end0');
+            const hasInternet = wifi_connected || ethernet_connected;
 
             res.json({
                 wifi_connected,
                 ethernet_connected,
+                hasInternet,
                 ssid: ssid || null
             });
         });
@@ -177,8 +179,97 @@ app.get('/api/system/logs', (req, res) => {
 });
 
 // ========================================
+// PAGE READY SIGNAL (for Plymouth transition)
+// ========================================
+
+app.post('/api/signal-ready', (req, res) => {
+    const signalFile = '/tmp/ods-loader-ready';
+    fs.writeFileSync(signalFile, Date.now().toString());
+    console.log('[SIGNAL] Page ready — Plymouth can quit');
+    res.json({ success: true });
+});
+
+// ========================================
+// ADMIN AUTH APIs (Upgrade C — otter user auth)
+// ========================================
+
+// Simple session tracking (in-memory, resets on restart — fine for device-local)
+const adminSessions = new Map();
+
+// Validate otter credentials via system `su` command
+app.post('/api/admin/login', (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    // Only allow 'otter' user login
+    if (username !== 'otter') {
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Validate password via su (checks PAM/shadow)
+    const escapedPassword = password.replace(/'/g, "'\\''");
+    exec(`echo '${escapedPassword}' | su -c 'echo OK' ${username} 2>&1`, { timeout: 5000 }, (error, stdout) => {
+        if (stdout.trim() === 'OK') {
+            // Generate simple session token
+            const token = require('crypto').randomBytes(32).toString('hex');
+            adminSessions.set(token, {
+                username,
+                created: Date.now(),
+                expires: Date.now() + (30 * 60 * 1000) // 30 min session
+            });
+            console.log(`[ADMIN] ${username} authenticated successfully`);
+            res.json({ success: true, token });
+        } else {
+            console.log(`[ADMIN] Failed login attempt for ${username}`);
+            res.status(401).json({ error: 'Invalid credentials' });
+        }
+    });
+});
+
+// Middleware to validate admin session
+function requireAdmin(req, res, next) {
+    const token = req.headers['x-admin-token'] || req.body.token;
+    if (!token) {
+        return res.status(401).json({ error: 'Admin authentication required' });
+    }
+
+    const session = adminSessions.get(token);
+    if (!session || session.expires < Date.now()) {
+        adminSessions.delete(token);
+        return res.status(401).json({ error: 'Session expired' });
+    }
+
+    req.adminUser = session.username;
+    next();
+}
+
+// Launch admin terminal (opens xterm via Openbox — appears as overlay)
+app.post('/api/admin/terminal', requireAdmin, (req, res) => {
+    exec('DISPLAY=:0 xterm -title "ODS Admin Terminal" -fa "Monospace" -fs 14 -bg "#1a1a2e" -fg "#00ff88" &');
+    console.log(`[ADMIN] Terminal launched by ${req.adminUser}`);
+    res.json({ success: true, message: 'Admin terminal launched' });
+});
+
+// Restart kiosk service
+app.post('/api/admin/restart-kiosk', requireAdmin, (req, res) => {
+    console.log(`[ADMIN] Kiosk restart requested by ${req.adminUser}`);
+    res.json({ success: true, message: 'Restarting kiosk...' });
+    setTimeout(() => exec('systemctl restart ods-kiosk'), 1000);
+});
+
+// View service status
+app.get('/api/admin/services', requireAdmin, (req, res) => {
+    exec('systemctl status ods-kiosk ods-webserver ods-dpms-enforce.timer ods-display-config ods-health-monitor --no-pager 2>&1', { timeout: 5000 }, (error, stdout) => {
+        res.json({ status: stdout || 'Unable to query services' });
+    });
+});
+
+// ========================================
 // START SERVER
 // ========================================
 app.listen(8080, () => {
-    console.log('[SETUP] ODS Player OS server running on port 8080');
+    console.log('[SETUP] ODS Player OS v6 server running on port 8080');
 });

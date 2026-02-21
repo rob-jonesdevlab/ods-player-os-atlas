@@ -143,6 +143,14 @@
                     <span class="material-symbols-outlined text-lg">tv</span>
                     <span class="text-sm font-medium">Player</span>
                 </button>
+
+                <div class="border-t border-slate-700 my-2"></div>
+
+                <button onclick="showSection('admin')" id="nav-admin"
+                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
+                    <span class="material-symbols-outlined text-lg" id="admin-nav-icon">lock</span>
+                    <span class="text-sm font-medium">Admin</span>
+                </button>
             </div>
         </div>
 
@@ -485,6 +493,83 @@
                 </button>
             </div>
         </section>
+
+        <!-- ==================== ADMIN (Upgrade C) ==================== -->
+        <section id="section-admin" class="section-content hidden">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">admin_panel_settings</span>
+                Admin Panel
+            </h2>
+
+            <!-- Login Form -->
+            <div id="admin-login-card" class="config-card rounded-xl p-6 mb-4">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-amber-400">lock</span>
+                    Admin Authentication Required
+                </h3>
+                <p class="text-sm text-slate-400 mb-4">Enter admin credentials to unlock system tools.</p>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Username</label>
+                        <input id="admin-user" type="text" value="otter" readonly
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Password</label>
+                        <input id="admin-pass" type="password" placeholder="Enter admin password"
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm" />
+                    </div>
+                </div>
+                <button onclick="adminLogin()"
+                    class="px-6 py-2.5 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined text-lg">login</span>
+                    Authenticate
+                </button>
+                <div id="admin-login-status" class="mt-3 text-sm hidden"></div>
+            </div>
+
+            <!-- Admin Tools (hidden until authenticated) -->
+            <div id="admin-tools" class="hidden">
+                <div class="config-card rounded-xl p-6 mb-4">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-emerald-400">lock_open</span>
+                        Admin Tools
+                        <span class="text-xs text-slate-500 ml-auto">Session active</span>
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="adminAction('terminal')"
+                            class="config-card rounded-xl p-5 hover:border-emerald-500/50 transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-2xl text-emerald-400 mb-2">terminal</span>
+                            <h4 class="font-semibold mb-1">Launch Terminal</h4>
+                            <p class="text-xs text-slate-400">Open admin terminal overlay</p>
+                        </button>
+                        <button onclick="adminAction('restart-kiosk')"
+                            class="config-card rounded-xl p-5 hover:border-amber-500/50 transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-2xl text-amber-400 mb-2">refresh</span>
+                            <h4 class="font-semibold mb-1">Restart Kiosk</h4>
+                            <p class="text-xs text-slate-400">Restart Chromium kiosk service</p>
+                        </button>
+                        <button onclick="adminViewServices()"
+                            class="config-card rounded-xl p-5 hover:border-blue-500/50 transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-2xl text-blue-400 mb-2">monitoring</span>
+                            <h4 class="font-semibold mb-1">Service Status</h4>
+                            <p class="text-xs text-slate-400">View all ODS service statuses</p>
+                        </button>
+                        <button onclick="systemAction('reboot')"
+                            class="config-card rounded-xl p-5 hover:border-red-500/50 transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-2xl text-red-400 mb-2">power_settings_new</span>
+                            <h4 class="font-semibold mb-1">Reboot Device</h4>
+                            <p class="text-xs text-slate-400">Full system reboot</p>
+                        </button>
+                    </div>
+                </div>
+                <div id="admin-services-output" class="config-card rounded-xl p-6 hidden">
+                    <h3 class="text-lg font-semibold mb-4">Service Status</h3>
+                    <pre id="admin-services-log"
+                        class="bg-slate-800 p-4 rounded-lg text-xs text-slate-300 font-mono max-h-64 overflow-y-auto whitespace-pre-wrap">Loading...</pre>
+                </div>
+            </div>
+        </section>
     </main>
 
     <script>
@@ -695,6 +780,104 @@
         }
         setInterval(updateClock, 1000);
         updateClock();
+
+        // ========================================
+        // ADMIN AUTH (Upgrade C)
+        // ========================================
+        let adminToken = sessionStorage.getItem('ods_admin_token') || null;
+
+        // Restore admin session if token exists
+        if (adminToken) {
+            document.getElementById('admin-login-card').classList.add('hidden');
+            document.getElementById('admin-tools').classList.remove('hidden');
+            document.getElementById('admin-nav-icon').textContent = 'lock_open';
+        }
+
+        async function adminLogin() {
+            const username = document.getElementById('admin-user').value;
+            const password = document.getElementById('admin-pass').value;
+            const status = document.getElementById('admin-login-status');
+
+            if (!password) {
+                status.textContent = 'Please enter a password';
+                status.className = 'mt-3 text-sm text-amber-400';
+                status.classList.remove('hidden');
+                return;
+            }
+
+            status.textContent = 'Authenticating...';
+            status.className = 'mt-3 text-sm text-slate-400';
+            status.classList.remove('hidden');
+
+            try {
+                const res = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    adminToken = data.token;
+                    sessionStorage.setItem('ods_admin_token', adminToken);
+                    document.getElementById('admin-login-card').classList.add('hidden');
+                    document.getElementById('admin-tools').classList.remove('hidden');
+                    document.getElementById('admin-nav-icon').textContent = 'lock_open';
+                } else {
+                    status.textContent = '✗ ' + (data.error || 'Authentication failed');
+                    status.className = 'mt-3 text-sm text-red-400';
+                }
+            } catch (e) {
+                status.textContent = '✗ Error: ' + e.message;
+                status.className = 'mt-3 text-sm text-red-400';
+            }
+        }
+
+        async function adminAction(action) {
+            if (!adminToken) { alert('Please authenticate first'); return; }
+            try {
+                const res = await fetch(`/api/admin/${action}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Token': adminToken
+                    }
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message || `${action} successful`);
+                } else {
+                    if (res.status === 401) {
+                        adminToken = null;
+                        sessionStorage.removeItem('ods_admin_token');
+                        document.getElementById('admin-login-card').classList.remove('hidden');
+                        document.getElementById('admin-tools').classList.add('hidden');
+                        document.getElementById('admin-nav-icon').textContent = 'lock';
+                        alert('Session expired. Please re-authenticate.');
+                    } else {
+                        alert(data.error || `${action} failed`);
+                    }
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function adminViewServices() {
+            if (!adminToken) { alert('Please authenticate first'); return; }
+            const output = document.getElementById('admin-services-output');
+            const log = document.getElementById('admin-services-log');
+            output.classList.remove('hidden');
+            log.textContent = 'Loading service status...';
+            try {
+                const res = await fetch('/api/admin/services', {
+                    headers: { 'X-Admin-Token': adminToken }
+                });
+                const data = await res.json();
+                log.textContent = data.status || 'No data';
+            } catch (e) {
+                log.textContent = 'Error: ' + e.message;
+            }
+        }
 
         // ========================================
         // INITIAL LOAD
