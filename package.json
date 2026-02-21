@@ -1,7 +1,7 @@
 {
-    "name": "ods-wifi-setup",
-    "version": "1.0.0",
-    "description": "ODS Player WiFi Setup Web App",
+    "name": "ods-player-os-atlas",
+    "version": "1.5.0",
+    "description": "ODS Player OS Atlas — Kiosk runtime for digital signage players",
     "main": "server.js",
     "dependencies": {
         "express": "^4.18.2",
