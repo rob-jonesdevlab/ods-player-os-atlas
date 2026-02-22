@@ -17,6 +17,9 @@ log "Starting ODS kiosk wrapper v8-0-6-FLASH..."
 
 for i in $(seq 1 30); do [ -e /dev/dri/card1 ] && break; sleep 0.1; done
 log "DRM device ready"
+FB_SIZE=$(cat /sys/class/graphics/fb0/virtual_size 2>/dev/null || echo "unknown")
+FB_BPP=$(cat /sys/class/graphics/fb0/bits_per_pixel 2>/dev/null || echo "unknown")
+log "Framebuffer: ${FB_SIZE} @ ${FB_BPP}bpp (simple-framebuffer — Plymouth renders here)"
 
 for tty in /dev/tty1 /dev/tty2 /dev/tty3; do
     printf '\033[2J\033[H\033[?25l' > "$tty" 2>/dev/null || true
@@ -48,6 +51,8 @@ rm -f "$STOP_FBI"
 ) &
 FBI_ANIM_PID=$!
 log "FBI bridge animation started"
+FB_SIZE_FBI=$(cat /sys/class/graphics/fb0/virtual_size 2>/dev/null || echo "unknown")
+log "Framebuffer at FBI start: ${FB_SIZE_FBI} (fbi writes raw RGB565 here)"
 
 plymouth quit --retain-splash 2>/dev/null || true
 log "Plymouth quit (held 5s) — fbi animation running"
@@ -66,6 +71,8 @@ xhost +local: 2>/dev/null || true
 touch "$STOP_FBI"
 kill $FBI_ANIM_PID 2>/dev/null || true
 log "Xorg ready — fbi animation stopped"
+XORG_RES=$(DISPLAY=:0 xrandr 2>/dev/null | grep '*' | head -1 | awk '{print $1}' || echo "unknown")
+log "Xorg display: ${XORG_RES} (DRM modesetting driver)"
 
 # Paint splash on root window immediately
 DISPLAY=:0 display -window root "$SPLASH_IMG" 2>/dev/null
@@ -97,7 +104,8 @@ elif [ "$SCREEN_W" -ge 2000 ]; then
 else
     export ODS_SCALE=1
 fi
-log "Screen: ${SCREEN_W}px, Scale: ${ODS_SCALE}"
+SCREEN_FULL=$(xrandr 2>/dev/null | grep '*' | head -1 | awk '{print $1}' || echo "unknown")
+log "Screen: ${SCREEN_W}px (${SCREEN_FULL}), Scale: ${ODS_SCALE}"
 
 export GTK_THEME="Adwaita:dark"
 export GTK2_RC_FILES="/usr/share/themes/Adwaita-dark/gtk-2.0/gtkrc"
