@@ -1023,10 +1023,6 @@ XORGCFG
         if ! echo "$cmdline" | grep -q "splash"; then
             cmdline="$cmdline splash quiet"
         fi
-        # CRITICAL: Remove console=tty1 — it sends ALL kernel/systemd output
-        # to the physical display, causing [OK] messages to show even with
-        # systemd.show_status=false. Keep only serial console for debugging.
-        cmdline=$(echo "$cmdline" | sed 's/console=tty1 //g; s/ console=tty1//g')
         # Add plymouth.ignore-serial-consoles
         if ! echo "$cmdline" | grep -q "plymouth.ignore-serial-consoles"; then
             cmdline="$cmdline plymouth.ignore-serial-consoles"
