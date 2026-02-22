@@ -428,7 +428,6 @@ chromium \
   --force-device-scale-factor=${ODS_SCALE:-1} \
   --remote-debugging-port=9222 \
   --default-background-color=000000 \
-  --force-dark-mode \
   --password-store=basic \
   --credentials-enable-service=false \
   --disable-save-password-bubble \
@@ -496,12 +495,13 @@ echo -e '\033[?25l' > /dev/tty1 2>/dev/null || true
 dd if=/dev/zero of=/dev/fb0 bs=65536 count=512 conv=notrunc 2>/dev/null || true
 log "VT1 + framebuffer painted black"
 
-# ── STAGE 2: PLYMOUTH RELEASE ─────────────────────────────────────────
-# VT1 is black → Plymouth releases DRM → screen stays black
+# ── STAGE 2: PLYMOUTH DEACTIVATE (but keep alive) ────────────────────
+# deactivate releases DRM so Xorg can use it, but keeps Plymouth alive.
+# plymouth quit is DELAYED until Chromium page signals ready (Stage 5).
+# This keeps the splash visible as long as possible.
 touch /tmp/ods-kiosk-starting
 plymouth deactivate 2>/dev/null || true
-plymouth quit 2>/dev/null || true
-log "Plymouth released (screen is black)"
+log "Plymouth deactivated (DRM released, splash process still alive)"
 
 # ── STAGE 3: X SERVER ─────────────────────────────────────────────────
 # Xorg starts on VT1 (already black) with no background
@@ -579,6 +579,11 @@ while [ ! -f "$SIGNAL_FILE" ]; do
 done
 
 [ -f "$SIGNAL_FILE" ] && log "Page ready signal received"
+
+# ── STAGE 6: PLYMOUTH QUIT (delayed until page is rendered) ──────────
+# Now that Chromium has rendered, safely quit Plymouth
+plymouth quit 2>/dev/null || true
+log "Plymouth quit (delayed — page is now visible)"
 log "Boot pipeline complete."
 
 # Clean up boot signals
