@@ -391,14 +391,16 @@ EOF
     systemctl enable ods-kiosk.service
     systemctl enable ods-webserver.service
     systemctl enable ods-health-monitor.service
-    systemctl enable ods-plymouth-hold.service
     systemctl enable ods-hide-tty.service
     systemctl enable ods-shutdown-splash.service
     systemctl enable ods-dpms-enforce.timer
     systemctl enable ods-display-config.service
     systemctl enable ods-enrollment-retry.timer
+    # Mask Plymouth quit services — our kiosk wrapper controls Plymouth timing
+    systemctl mask plymouth-quit.service 2>/dev/null || true
+    systemctl mask plymouth-quit-wait.service 2>/dev/null || true
 
-    log "  ✅ All 9 services deployed and enabled"
+    log "  ✅ All services deployed (Plymouth quit masked — kiosk wrapper controls timing)"
 }
 
 # ─── Step 6: Deploy Kiosk Scripts ──────────────────────────────────────────
@@ -453,9 +455,10 @@ EOF
     # --- ods-kiosk-wrapper.sh ---
     cat > /usr/local/bin/ods-kiosk-wrapper.sh << 'SCRIPT'
 #!/bin/bash
-# ODS Kiosk Wrapper v9 — Simplified seamless boot
-# Pipeline: VT1 blackout → Plymouth quit → Xorg (black root) → Chromium (FOUC guard)
-# The web pages handle their own anti-flash via CSS FOUC guard (opacity 0→1 on load)
+# ODS Kiosk Wrapper v10 — Premium boot pipeline
+# Pipeline: VT blackout → Plymouth deactivate → Xorg (black root) → Chromium (FOUC guard)
+# v10: Fixed Xorg grey flash (was -background none = grey stipple default)
+# v10: Tighter VT control with chvt + openvt
 LOG_DIR="/home/signage/ODS/logs/boot"
 mkdir -p "$LOG_DIR"
 BOOT_LOG="$LOG_DIR/boot_$(date +%Y%m%d_%H%M%S).log"
@@ -467,7 +470,7 @@ log() {
     echo "$msg"
 }
 
-log "Starting ODS kiosk wrapper v9..."
+log "Starting ODS kiosk wrapper v10..."
 
 # Wait for DRM display
 TIMEOUT=30
@@ -482,41 +485,47 @@ while [ ! -e /dev/dri/card* ] 2>/dev/null; do
 done
 log "DRM device ready (${ELAPSED}s)"
 
-# ── STAGE 1: VT1 BLACKOUT ─────────────────────────────────────────────
-# Paint everything black BEFORE Plymouth releases DRM
-log "Painting VT1 + framebuffer black..."
-export TERM=linux
-setterm --foreground black --background black --cursor off > /dev/tty1 2>/dev/null || true
-printf '\033[2J\033[H' > /dev/tty1 2>/dev/null || true
+# ── STAGE 1: AGGRESSIVE VT BLACKOUT ──────────────────────────────────
+# Multiple layers to ensure VT1 is pitch black:
+# Layer 1: Kernel — suppress all printk messages
 echo 0 > /proc/sys/kernel/printk 2>/dev/null || true
-stty -echo -F /dev/tty1 2>/dev/null || true
-echo -e '\033[?25l' > /dev/tty1 2>/dev/null || true
-# Fill framebuffer with black pixels
+# Layer 2: Terminal — black on black, no cursor, no echo
+export TERM=linux
+for tty in /dev/tty1 /dev/tty2 /dev/tty3; do
+    setterm --foreground black --background black --cursor off > "$tty" 2>/dev/null || true
+    printf '\033[2J\033[H\033[?25l' > "$tty" 2>/dev/null || true
+    stty -echo -F "$tty" 2>/dev/null || true
+done
+# Layer 3: Framebuffer — raw black pixels
 dd if=/dev/zero of=/dev/fb0 bs=65536 count=512 conv=notrunc 2>/dev/null || true
-log "VT1 + framebuffer painted black"
+# Layer 4: Switch to a clean, unused VT (VT7) before Xorg starts
+chvt 7 2>/dev/null || true
+log "VT blackout complete (kernel, terminal, framebuffer, chvt)"
 
-# ── STAGE 2: PLYMOUTH DEACTIVATE (but keep alive) ────────────────────
-# deactivate releases DRM so Xorg can use it, but keeps Plymouth alive.
-# plymouth quit is DELAYED until Chromium page signals ready (Stage 5).
-# This keeps the splash visible as long as possible.
+# ── STAGE 2: PLYMOUTH DEACTIVATE (keep alive for delayed quit) ───────
 touch /tmp/ods-kiosk-starting
 plymouth deactivate 2>/dev/null || true
-log "Plymouth deactivated (DRM released, splash process still alive)"
+log "Plymouth deactivated (DRM released for Xorg)"
 
-# ── STAGE 3: X SERVER ─────────────────────────────────────────────────
-# Xorg starts on VT1 (already black) with no background
+# ── STAGE 3: X SERVER (black root — NOT -background none) ────────────
+# CRITICAL FIX: -background none → grey stipple default (Xorg bug/design)
+# Solution: omit -background flag, Xorg starts on vt7 (clean black VT)
+# xsetroot runs IMMEDIATELY after Xorg is ready, before any window manager
 export HOME=/home/signage
-Xorg :0 -nolisten tcp -novtswitch -background none vt1 &
+Xorg :0 -nolisten tcp -novtswitch vt7 &
 
-for i in $(seq 1 80); do
-    if xdpyinfo -display :0 >/dev/null 2>&1; then break; fi
+for i in $(seq 1 120); do
+    if xdpyinfo -display :0 >/dev/null 2>&1; then
+        # IMMEDIATELY paint root black — before anything else connects
+        DISPLAY=:0 xsetroot -solid "#000000" 2>/dev/null
+        break
+    fi
     sleep 0.05
 done
 export DISPLAY=:0
-
-# Black root window (safety layer)
-xsetroot -solid "#000000"
-log "X server started on VT1 (black root)"
+# Double-ensure root is black (in case race condition)
+xsetroot -solid "#000000" 2>/dev/null || true
+log "X server started on VT7 (black root, no grey flash)"
 
 # ── SLEEP PREVENTION ──────────────────────────────────────────────────
 xset -dpms 2>/dev/null || true
