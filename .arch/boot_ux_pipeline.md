@@ -1,16 +1,27 @@
-# Boot UX Pipeline — ODS Player OS Atlas v5
+# Boot UX Pipeline — ODS Player OS Atlas v7-11
 
-**Purpose:** Document the complete visual pipeline from power-on to Chromium kiosk.
+**Purpose:** Document the complete visual pipeline from power-on to Chromium kiosk.  
+**Kiosk Wrapper:** v11  
+**Last Updated:** February 21, 2026
 
 ---
 
 ## The Problem
 
-During the Plymouth → Xorg handoff, the bare Linux VT1 console (white/grey background) flashes briefly on screen. This creates an unprofessional visual artifact during boot.
+During the Plymouth → Xorg handoff, multiple visual artifacts can appear:
 
-## The Solution (v5)
+| Issue | Root Cause | Status |
+|-------|-----------|--------|
+| White TTY flash | Bare VT1 console visible during handoff | ✅ Fixed (v5) |
+| White Chromium flash | Chromium renders white before CSS loads | ✅ Fixed (v7-6: dark GTK theme) |
+| Grey Chromium flash | `--force-dark-mode` renders #3C3C3C | ✅ Fixed (v7-7: removed flag) |
+| Grey Xorg root | `-background none` = grey stipple default | ✅ Fixed (v7-8: removed flag) |
+| 26s bare TTY gap | `plymouth-quit` fires before kiosk starts | ✅ Fixed (v7-10: service deps) |
+| Grey modeset resets | KMS color map re-initialized 6+ times | 🔄 Fix in test (v7-11: repaint loop) |
 
-Pre-paint VT1 completely black **before** Plymouth releases DRM control. When Plymouth deactivates, the user sees black → black (no flash).
+## The Solution (v7-11)
+
+Multi-layer approach: Paint VT1 black before Plymouth releases DRM. Block `plymouth-quit` until kiosk has display control. Continuous xsetroot repaint loop covers modeset driver color map resets.
 
 ## Pipeline Sequence
 
@@ -35,63 +46,84 @@ Plymouth ODS theme (/usr/share/plymouth/themes/ods/):
   DialogClearsFirmwareBackground=false
 ```
 
-### Phase 3: TTY Flash Fix (ods-kiosk-wrapper.sh)
+### Phase 3: Plymouth Hold (systemd)
+```
+ods-plymouth-hold.service:
+  After=plymouth-start.service
+  Before=plymouth-quit.service plymouth-quit-wait.service
+  Polls for /tmp/ods-kiosk-starting (kiosk wrapper signal)
+  Blocks plymouth-quit from firing until kiosk has display control
+```
+
+### Phase 4: VT1 Blackout (ods-kiosk-wrapper.sh)
 ```bash
-# 1) Black-on-black text + hide cursor
-setterm --foreground black --background black --cursor off > /dev/tty1
-
-# 2) Clear screen to black
-printf '\033[2J\033[H' > /dev/tty1
-
-# 3) Suppress all console output
+# Kernel printk suppression
 echo 0 > /proc/sys/kernel/printk
-stty -echo -F /dev/tty1
 
-# 4) Fill framebuffer with black pixels
-dd if=/dev/zero of=/dev/fb0 bs=65536 count=128 conv=notrunc
+# Black-on-black text + hide cursor (tty1, tty2, tty3)
+for tty in /dev/tty1 /dev/tty2 /dev/tty3; do
+    setterm --foreground black --background black --cursor off > "$tty"
+    printf '\033[2J\033[H\033[?25l' > "$tty"
+    stty -echo -F "$tty"
+done
+
+# Fill framebuffer with black pixels
+dd if=/dev/zero of=/dev/fb0 bs=65536 count=512 conv=notrunc
 ```
 
-### Phase 4: Plymouth Deactivate
+### Phase 5: Plymouth Deactivate + Kiosk Signal
 ```bash
-plymouth deactivate   # Releases DRM — VT1 is already black, no flash
+touch /tmp/ods-kiosk-starting      # Unblocks ods-plymouth-hold
+plymouth deactivate                # Releases DRM for Xorg (splash stays as watermark)
+# → ods-plymouth-hold sees signal → finishes → plymouth-quit fires → Plymouth dies
+# By this point, kiosk wrapper already controls the display
 ```
 
-### Phase 5: Xorg Start
+### Phase 6: Xorg Start (grey flash fixed)
 ```bash
-Xorg :0 -nolisten tcp -novtswitch -background none vt1 &
+# NO -background none (caused grey stipple root window)
+Xorg :0 -nolisten tcp -novtswitch vt1 &
 
-# Tight ready loop (replaces fixed sleep)
-for i in $(seq 1 40); do
-    xdpyinfo -display :0 >/dev/null 2>&1 && break
+# Wait for Xorg to accept connections
+for i in $(seq 1 120); do
+    xdpyinfo -display :0 && break
     sleep 0.05
 done
 
-xsetroot -solid "#000000"             # Paint X root black immediately
-xset -dpms; xset s off; xset s noblank  # Disable all screen blanking
+# CONTINUOUS black repaint — covers modeset color map resets
+# modeset driver re-initializes kms color map 6+ times during startup
+(
+    for j in $(seq 1 200); do
+        xsetroot -solid "#000000"
+        sleep 0.05
+    done
+) &
 ```
 
-### Phase 6: Chromium Launch
+### Phase 7: GTK Theme + Chromium Launch
 ```bash
+export GTK_THEME="Adwaita:dark"     # Dark canvas for Chromium initial render
+# NO --force-dark-mode (renders grey #3C3C3C, not black)
 chromium --kiosk --no-sandbox \
-  --default-background-color=000000 \  # Black until page loads
-  --force-dark-mode \
+  --default-background-color=000000 \
   "http://localhost:8080/network_setup.html"
 ```
 
-### Phase 7: Plymouth Quit
+### Phase 8: Page Ready + Plymouth Quit
 ```bash
-# Wait for page ready signal (/tmp/ods-loader-ready)
-# Then: sleep 2 (paint delay)
-plymouth quit    # X is already on VT1, no chvt needed
+# network_setup.html calls /api/signal-ready → touches /tmp/ods-loader-ready
+# FOUC guard: page starts at opacity:0, fades to opacity:1 on body.ready
+# Stage 6 (delayed): plymouth quit fires after page is fully rendered
 ```
 
 ## Supporting Services
 
 | Service | Role |
 |---------|------|
-| `ods-plymouth-hold.service` | Keeps Plymouth alive during early boot (15s delay) |
+| `ods-plymouth-hold.service` | Blocks `plymouth-quit` until kiosk signals readiness |
 | `ods-hide-tty.service` | Pre-suppresses VT1 output before getty |
 | `ods-shutdown-splash.service` | Shows Plymouth on reboot/poweroff |
+| `ods-dpms-enforce.timer` | Resets DPMS every 5 minutes (belt-and-suspenders) |
 
 ## VT Lockdown
 
@@ -102,18 +134,31 @@ plymouth quit    # X is already on VT1, no chvt needed
 | Xorg `-novtswitch` | `ods-kiosk-wrapper.sh` | Belt-and-suspenders |
 | getty@tty1-6 masked | systemd | No login prompts on any VT |
 | SysRq disabled | `/etc/sysctl.d/99-no-vtswitch.conf` | kernel.sysrq=0 |
-| matchbox `-use_cursor no` | `ods-kiosk-wrapper.sh` | No cursor visible |
+| unclutter | `ods-kiosk-wrapper.sh` | No cursor visible |
 
-## Visual Timeline
+## Visual Timeline (v7-11 target)
 
 ```
 t=0s    Power on
 t=2s    Plymouth splash visible (ODS logo + throbber)
-t=8s    ods-kiosk-wrapper.sh starts
-t=8.1s  VT1 pre-painted black (TTY flash fix)
-t=8.2s  Plymouth deactivated (no flash)
-t=8.5s  Xorg running, root window black
-t=9s    Chromium launched
-t=12s   Page loaded, loader-ready signal
-t=14s   Plymouth quit — seamless transition complete
+t=5.7s  ods-plymouth-hold.service starts (blocks plymouth-quit)
+t=6.9s  ods-kiosk starts → VT1 blackout → /tmp/ods-kiosk-starting
+t=7.0s  Plymouth deactivated (DRM released for Xorg)
+t=7.0s  plymouth-hold unblocked → plymouth-quit fires (display under kiosk control)
+t=12.5s Xorg ready (continuous black repaint loop active)
+t=14.7s Openbox + Chromium launched
+t=21.2s Page ready signal → Plymouth quit (delayed) → Boot complete
 ```
+
+## Lessons Learned
+
+| Lesson | Details |
+|--------|---------|
+| `-background none` ≠ black | Leaves root window undefined → grey stipple pattern |
+| `--force-dark-mode` ≠ black | Renders Chromium canvas as grey #3C3C3C |
+| `plymouth-quit` timing is critical | If it fires before kiosk starts, 26s of bare TTY |
+| `openssl passwd` doesn't support yescrypt | Debian Trixie uses `$y$` hashes; use `su`/PAM |
+| Python 3.13 removed `crypt` AND `spwd` | No Python-based auth possible on Trixie |
+| Masking `plymouth-quit.service` breaks boot | Systemd boot messages leak to console |
+| VT7 for Xorg causes AIGLX VT-switch events | Stay on VT1 |
+| modeset driver does 6+ kms color map resets | Single xsetroot insufficient; needs continuous loop |
