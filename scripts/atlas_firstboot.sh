@@ -437,12 +437,26 @@ chromium \
 SCRIPT
     chmod +x /usr/local/bin/start-kiosk.sh
 
+    # --- Chromium managed policy (suppresses password popup + autofill) ---
+    mkdir -p /etc/chromium/policies/managed
+    cat > /etc/chromium/policies/managed/ods-kiosk.json << 'EOF'
+{
+  "PasswordManagerEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "ImportSavedPasswords": false,
+  "CredentialProviderPromoEnabled": false,
+  "BrowserSignin": 0
+}
+EOF
+    log "  ✅ Chromium managed policy deployed"
+
     # --- ods-kiosk-wrapper.sh ---
     cat > /usr/local/bin/ods-kiosk-wrapper.sh << 'SCRIPT'
 #!/bin/bash
-# ODS Kiosk Wrapper v8 — Framebuffer Bridge (seamless boot)
-# Pipeline: DRM → fbi splash on /dev/fb0 → Plymouth quit → Xorg → Chromium → kill fbi
-# Zero gaps. Zero flashes. Splash visible from Plymouth through Chromium render.
+# ODS Kiosk Wrapper v9 — Simplified seamless boot
+# Pipeline: VT1 blackout → Plymouth quit → Xorg (black root) → Chromium (FOUC guard)
+# The web pages handle their own anti-flash via CSS FOUC guard (opacity 0→1 on load)
 LOG_DIR="/home/signage/ODS/logs/boot"
 mkdir -p "$LOG_DIR"
 BOOT_LOG="$LOG_DIR/boot_$(date +%Y%m%d_%H%M%S).log"
@@ -454,7 +468,7 @@ log() {
     echo "$msg"
 }
 
-log "Starting ODS kiosk wrapper v8 (framebuffer bridge)..."
+log "Starting ODS kiosk wrapper v9..."
 
 # Wait for DRM display
 TIMEOUT=30
@@ -469,88 +483,58 @@ while [ ! -e /dev/dri/card* ] 2>/dev/null; do
 done
 log "DRM device ready (${ELAPSED}s)"
 
-# ── STAGE 1: TTY BLACKOUT ─────────────────────────────────────────────
-# Paint VT1 completely black BEFORE anything else
-log "Painting VT1 black..."
+# ── STAGE 1: VT1 BLACKOUT ─────────────────────────────────────────────
+# Paint everything black BEFORE Plymouth releases DRM
+log "Painting VT1 + framebuffer black..."
 export TERM=linux
 setterm --foreground black --background black --cursor off > /dev/tty1 2>/dev/null || true
 printf '\033[2J\033[H' > /dev/tty1 2>/dev/null || true
 echo 0 > /proc/sys/kernel/printk 2>/dev/null || true
 stty -echo -F /dev/tty1 2>/dev/null || true
 echo -e '\033[?25l' > /dev/tty1 2>/dev/null || true
-log "VT1 painted black"
+# Fill framebuffer with black pixels
+dd if=/dev/zero of=/dev/fb0 bs=65536 count=512 conv=notrunc 2>/dev/null || true
+log "VT1 + framebuffer painted black"
 
-# ── STAGE 2: FRAMEBUFFER SPLASH BRIDGE ────────────────────────────────
-# Display ODS splash PNG directly on /dev/fb0 via fbi.
-# This image persists underneath X11 and stays visible until we kill fbi.
-# It bridges the gap between Plymouth and Chromium rendering.
-SPLASH_IMG="/usr/share/plymouth/themes/ods/ods-player-boot-splash.png"
-# Fallback to watermark.png if boot splash not available
-if [ ! -f "$SPLASH_IMG" ]; then
-    SPLASH_IMG="/usr/share/plymouth/themes/ods/watermark.png"
-fi
-FBI_PID=""
-
-if [ -f "$SPLASH_IMG" ] && [ -c /dev/fb0 ]; then
-    # Fill framebuffer black first (clean slate)
-    dd if=/dev/zero of=/dev/fb0 bs=65536 count=512 conv=notrunc 2>/dev/null || true
-
-    # Launch fbi on VT1 to display splash image
-    fbi -T 1 -a --noverbose --nocomments "$SPLASH_IMG" 2>/dev/null &
-    FBI_PID=$!
-    sleep 0.3
-    log "fbi splash bridge active (PID: $FBI_PID)"
-else
-    log "WARN: Splash image or /dev/fb0 not available; using black framebuffer"
-    dd if=/dev/zero of=/dev/fb0 bs=65536 count=512 conv=notrunc 2>/dev/null || true
-fi
-
-# ── STAGE 3: PLYMOUTH QUIT ────────────────────────────────────────────
-# Safe to quit Plymouth now — fbi splash is holding the display
+# ── STAGE 2: PLYMOUTH RELEASE ─────────────────────────────────────────
+# VT1 is black → Plymouth releases DRM → screen stays black
 touch /tmp/ods-kiosk-starting
 plymouth deactivate 2>/dev/null || true
 plymouth quit 2>/dev/null || true
-log "Plymouth released (fbi splash still visible)"
+log "Plymouth released (screen is black)"
 
-# ── STAGE 4: X SERVER ─────────────────────────────────────────────────
-# Xorg starts on VT1 — fbi splash remains visible on the framebuffer underneath
+# ── STAGE 3: X SERVER ─────────────────────────────────────────────────
+# Xorg starts on VT1 (already black) with no background
 export HOME=/home/signage
 Xorg :0 -nolisten tcp -novtswitch -background none vt1 &
 
-# Wait for Xorg to be ready
 for i in $(seq 1 80); do
-    if xdpyinfo -display :0 >/dev/null 2>&1; then
-        break
-    fi
+    if xdpyinfo -display :0 >/dev/null 2>&1; then break; fi
     sleep 0.05
 done
 export DISPLAY=:0
 
-# Paint X root window black (safety layer under Chromium)
+# Black root window (safety layer)
 xsetroot -solid "#000000"
-log "X server started on VT1"
+log "X server started on VT1 (black root)"
 
-# ── SLEEP PREVENTION — Layer 3 (X11 xset) ──────────────────────────────
+# ── SLEEP PREVENTION ──────────────────────────────────────────────────
 xset -dpms 2>/dev/null || true
 xset s off 2>/dev/null || true
 xset s noblank 2>/dev/null || true
-log "Screen blanking/DPMS disabled"
 
-# ── STAGE 5: WINDOW MANAGER + CHROMIUM ────────────────────────────────
+# ── STAGE 4: WINDOW MANAGER + CHROMIUM ────────────────────────────────
 openbox --config-file /etc/ods/openbox-rc.xml &
 unclutter -idle 0.01 -root &
-log "Openbox window manager started"
+log "Openbox started"
 
-# Display configuration
 /usr/local/bin/ods-display-config.sh 2>/dev/null || true
-log "Display configuration applied"
 
 # Detect screen resolution and set scale
 SCREEN_W=$(xrandr 2>/dev/null | grep '*' | head -1 | awk '{print $1}' | cut -dx -f1)
 if [ -z "$SCREEN_W" ] || [ "$SCREEN_W" -eq 0 ] 2>/dev/null; then
     SCREEN_W=1920
 fi
-
 if [ "$SCREEN_W" -ge 3000 ]; then
     export ODS_SCALE=2
 elif [ "$SCREEN_W" -ge 2000 ]; then
@@ -558,44 +542,32 @@ elif [ "$SCREEN_W" -ge 2000 ]; then
 else
     export ODS_SCALE=1
 fi
-log "Screen width: ${SCREEN_W}, Scale factor: ${ODS_SCALE}"
+log "Screen: ${SCREEN_W}px, Scale: ${ODS_SCALE}"
 
-# Launch Chromium
+# Launch Chromium (page has FOUC guard — starts invisible, fades in when ready)
 /usr/local/bin/start-kiosk.sh &
 KIOSK_PID=$!
 log "Chromium launched (PID: $KIOSK_PID)"
 
-# ── STAGE 6: WAIT FOR PAGE READY → KILL SPLASH ───────────────────────
-# Chromium page calls /api/signal-ready which touches this file.
-# Only then do we kill the fbi splash, revealing the rendered page.
+# ── STAGE 5: WAIT FOR PAGE READY ─────────────────────────────────────
+# network_setup.html calls /api/signal-ready on load → touches this file
 SIGNAL_FILE="/tmp/ods-loader-ready"
 rm -f "$SIGNAL_FILE"
-TIMEOUT=30
+TIMEOUT=45
 ELAPSED=0
-log "Waiting for Chromium page ready signal..."
+log "Waiting for page ready signal..."
 
 while [ ! -f "$SIGNAL_FILE" ]; do
     sleep 0.5
     ELAPSED=$((ELAPSED + 1))
     if [ $ELAPSED -ge $((TIMEOUT * 2)) ]; then
-        log "WARN: Page ready not received after ${TIMEOUT}s — forcing reveal"
+        log "WARN: Page ready not received after ${TIMEOUT}s"
         break
     fi
 done
 
-if [ -f "$SIGNAL_FILE" ]; then
-    log "Page ready signal received — revealing Chromium"
-fi
-
-# Kill fbi splash bridge — Chromium is now rendered
-if [ -n "$FBI_PID" ]; then
-    kill "$FBI_PID" 2>/dev/null || true
-    # Also kill any lingering fbi processes
-    killall fbi 2>/dev/null || true
-    log "fbi splash bridge dismissed"
-fi
-
-log "TRANSITION COMPLETE: Kiosk active. Zero-gap boot pipeline done."
+[ -f "$SIGNAL_FILE" ] && log "Page ready signal received"
+log "Boot pipeline complete."
 
 # Clean up boot signals
 rm -f /tmp/ods-kiosk-starting /tmp/ods-loader-ready
@@ -621,22 +593,22 @@ printf "\033[?25l" > /dev/tty1 2>/dev/null || true
 SCRIPT
     chmod +x /usr/local/bin/hide-tty.sh
 
-    # --- ods-auth-check.sh (Admin auth via PAM-standard crypt validation) ---
+    # --- ods-auth-check.sh (Admin auth via shadow + openssl — Python-free) ---
     cat > /usr/local/bin/ods-auth-check.sh << 'SCRIPT'
-#!/usr/bin/env python3
-"""ODS Admin Auth — validates credentials via /etc/shadow (PAM-standard crypt)."""
-import sys, crypt, spwd
-if len(sys.argv) != 3:
-    print("FAIL"); sys.exit(1)
-username, password = sys.argv[1], sys.argv[2]
-try:
-    sp = spwd.getspwd(username)
-    if crypt.crypt(password, sp.sp_pwdp) == sp.sp_pwdp:
-        print("OK")
-    else:
-        print("FAIL")
-except (KeyError, PermissionError):
-    print("FAIL")
+#!/bin/bash
+# ODS Admin Auth — validates credentials via /etc/shadow + openssl
+# Replaces Python crypt+spwd (spwd removed from Python 3.13+)
+USER="$1"; PASS="$2"
+[ -z "$USER" ] || [ -z "$PASS" ] && { echo "FAIL"; exit 1; }
+SHADOW=$(getent shadow "$USER" 2>/dev/null) || { echo "FAIL"; exit 1; }
+HASH=$(echo "$SHADOW" | cut -d: -f2)
+# Extract algorithm and salt from stored hash ($id$salt$hash format)
+ALGO=$(echo "$HASH" | cut -d'$' -f2)
+SALT=$(echo "$HASH" | cut -d'$' -f3)
+[ -z "$ALGO" ] || [ -z "$SALT" ] && { echo "FAIL"; exit 1; }
+# Compute hash using openssl passwd
+COMPUTED=$(openssl passwd -"$ALGO" -salt "$SALT" "$PASS" 2>/dev/null)
+[ "$COMPUTED" = "$HASH" ] && echo "OK" || echo "FAIL"
 SCRIPT
     chmod +x /usr/local/bin/ods-auth-check.sh
     # Allow signage user to run auth check as root (needed to read /etc/shadow)
