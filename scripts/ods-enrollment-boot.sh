@@ -1,5 +1,5 @@
 #!/bin/bash
-# ODS Enrollment Boot — Phase 2: Sealed-in-splash Esper enrollment
+# ODS Enrollment Boot — Phase 2: Sealed-in-splash management server enrollment
 # Pipeline: Plymouth (5s) → FBI bridge → Enrollment attempt → Success/Retry/Fail
 # NEVER launches Chromium/Xorg — everything via framebuffer
 # DO NOT add set -e
@@ -103,7 +103,7 @@ rm -f "$STOP_PROGRESS"
 PROGRESS_PID=$!
 log "Enrollment progress animation started"
 
-# ── STAGE 7: RUN ESPER ENROLLMENT ────────────────────────────────────
+# ── STAGE 7: RUN MANAGEMENT SERVER ENROLLMENT ────────────────────────
 ENROLL_SUCCESS=false
 
 # Load secrets
@@ -114,14 +114,14 @@ else
     log "ERROR: Secrets file not found at $SECRETS_FILE"
 fi
 
-# Download and run Esper setup
+# Download and run enrollment setup
 cd /tmp
 if curl -sS --connect-timeout 15 --max-time 120 \
     https://artifacthub.esper.cloud/linux/scripts/prod/setup.sh \
     -o /tmp/esper_setup.sh 2>&1 | tee -a "$LOG_FILE"; then
 
     chmod +x /tmp/esper_setup.sh
-    log "Esper setup script downloaded"
+    log "Management server setup script downloaded"
 
     if bash /tmp/esper_setup.sh \
         --tenant "${ESPER_TENANT}" \
@@ -136,16 +136,16 @@ if curl -sS --connect-timeout 15 --max-time 120 \
 
         if systemctl is-active --quiet esper-cmse 2>/dev/null; then
             ENROLL_SUCCESS=true
-            log "Esper enrollment SUCCEEDED — agent running"
+            log "Management server enrollment SUCCEEDED — agent running"
         else
-            log "WARN: Esper setup ran but agent not active"
+            log "WARN: Enrollment setup ran but agent not active"
         fi
     else
-        log "ERROR: Esper setup script failed"
+        log "ERROR: Management server setup script failed"
     fi
     rm -f /tmp/esper_setup.sh
 else
-    log "ERROR: Failed to download Esper setup script"
+    log "ERROR: Failed to download management server setup script"
 fi
 
 # Stop progress animation
@@ -217,10 +217,10 @@ else
     show_frame "$ANIM_DIR/enroll_retry_${ATTEMPTS}.raw"
     log "Retry splash displayed (attempt $ATTEMPTS)"
 
-    # Wipe Esper state for clean retry
+    # Wipe enrollment state for clean retry
     rm -f /var/lib/esper/device_config.json /var/lib/esper/serial.dat 2>/dev/null
     systemctl stop esper-cmse esper-telemetry 2>/dev/null || true
-    log "Esper state wiped"
+    log "Enrollment state wiped"
 
     sleep 5
     log "Rebooting for retry..."
