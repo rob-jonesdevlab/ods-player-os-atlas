@@ -3,6 +3,7 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const QRCode = require('qrcode');
 const app = express();
+const PORT = 8080;
 
 app.use(express.json());
 app.use(express.static('public'));
@@ -321,23 +322,16 @@ app.get('/api/admin/services', requireAdmin, (req, res) => {
 });
 
 // ========================================
-// START SERVER
-// ========================================
-app.listen(PORT, () => {
-    console.log(`ODS Player OS webserver running on port ${PORT}`);
-});
-
-// ========================================
 // DEVICE INFO API (hostname, MAC, network, pairing)
 // ========================================
 
 app.get('/api/device/info', (req, res) => {
     const commands = {
-        three_word_name: '/usr/local/bin/ods-hostname.sh generate 2>/dev/null || echo "unknown"',
-        mac_address: "ip link show 2>/dev/null | grep -A1 'state UP' | grep ether | head -1 | awk '{print $2}' || echo '--'",
-        connection_method: "ip route get 8.8.8.8 2>/dev/null | head -1 | grep -oP 'dev \\K\\S+' || echo '--'",
+        three_word_name: '/usr/local/bin/ods-hostname.sh generate 2>/dev/null || echo unknown',
+        mac_address: "ip link show 2>/dev/null | grep -A1 'state UP' | grep ether | head -1 | awk '{print $2}' || echo --",
+        connection_method: "ip route get 8.8.8.8 2>/dev/null | head -1 | sed -n 's/.*dev \\([^ ]*\\).*/\\1/p' || echo --",
         ssid: "iwgetid -r 2>/dev/null || echo ''",
-        ip_address: "hostname -I 2>/dev/null | awk '{print $1}' || echo '--'"
+        ip_address: "hostname -I 2>/dev/null | awk '{print $1}' || echo --"
     };
 
     let completed = 0;
@@ -377,4 +371,11 @@ app.get('/api/device/info', (req, res) => {
             }
         });
     }
+});
+
+// ========================================
+// START SERVER
+// ========================================
+app.listen(PORT, () => {
+    console.log(`[SETUP] ODS Player OS v7 server running on port ${PORT}`);
 });
