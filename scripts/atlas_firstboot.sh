@@ -1035,8 +1035,12 @@ XORGCFG
         if ! echo "$cmdline" | grep -q "vt.global_cursor_default=0"; then
             cmdline="$cmdline vt.global_cursor_default=0"
         fi
-        # Upgrade loglevel to 3 (suppress verbose kernel output)
-        cmdline=$(echo "$cmdline" | sed 's/loglevel=[0-9]*/loglevel=3/')
+        # Suppress systemd [OK] boot messages
+        if ! echo "$cmdline" | grep -q "systemd.show_status"; then
+            cmdline="$cmdline systemd.show_status=false"
+        fi
+        # Upgrade loglevel to 0 (completely silent — no kernel output at all)
+        cmdline=$(echo "$cmdline" | sed 's/loglevel=[0-9]*/loglevel=0/')
 
         echo "$cmdline" > /boot/firmware/cmdline.txt
         log "  ✅ /boot/firmware/cmdline.txt updated"
@@ -1218,6 +1222,17 @@ finalize_phase1() {
     # Set Phase 2 marker — next boot will run device-specific enrollment
     mkdir -p /var/lib/ods
     echo "2" > /var/lib/ods/phase
+
+    # CRITICAL: Re-create the firstboot gate file!
+    # atlas-firstboot.service has ConditionPathExists=/root/.not_logged_in_yet
+    # bypass_firstlogin() removes this file. Without it, systemd skips Phase 2.
+    touch /root/.not_logged_in_yet
+    log "  ✅ Firstboot gate file restored for Phase 2"
+
+    # Clear machine-id so each cloned device generates a unique one
+    echo "" > /etc/machine-id
+    rm -f /var/lib/dbus/machine-id 2>/dev/null || true
+    log "  ✅ Machine-ID cleared (unique per clone)"
 
     # Clean up cloned repo (saves ~100MB on cloned image)
     rm -rf /tmp/atlas_repo
