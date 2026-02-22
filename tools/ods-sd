@@ -278,18 +278,81 @@ do_list() {
     echo ""
 }
 
+# ── INSERT (Phase 0) ────────────────────────────────────────────────
+do_insert() {
+    local base_img="$1"
+    local output_img="$2"
+
+    if [ -z "$base_img" ] || [ -z "$output_img" ]; then
+        err "Usage: ods-sd insert base-armbian.img output-golden-vN-P-TAG.img"
+        exit 1
+    fi
+
+    if [ ! -f "$base_img" ]; then
+        err "Base image not found: $base_img"
+        exit 1
+    fi
+
+    check_lima
+
+    local repo_dir
+    repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
+    local inject_script="$repo_dir/scripts/inject_atlas.sh"
+
+    if [ ! -f "$inject_script" ]; then
+        err "inject_atlas.sh not found at $inject_script"
+        exit 1
+    fi
+
+    # Convert to absolute paths for Lima
+    base_img="$(cd "$(dirname "$base_img")" && pwd)/$(basename "$base_img")"
+    output_img="$(cd "$(dirname "$output_img")" 2>/dev/null && pwd)/$(basename "$output_img")"
+
+    echo ""
+    echo "═══════════════════════════════════════════════════════"
+    echo "  ODS Atlas — Phase 0 Insert (via Lima)"
+    echo "═══════════════════════════════════════════════════════"
+    echo "  Base:    $base_img"
+    echo "  Output:  $output_img"
+    echo "  Script:  $inject_script"
+    echo ""
+    read -p "  Continue? (type YES): " confirm
+    if [ "$confirm" != "YES" ]; then
+        echo "  Aborted."
+        exit 0
+    fi
+
+    log "Running inject_atlas.sh in Lima VM..."
+    limactl shell "$LIMA_VM" -- sudo bash "$inject_script" "$base_img" "$output_img"
+
+    if [ -f "$output_img" ]; then
+        echo ""
+        echo "═══════════════════════════════════════════════════════"
+        echo "  ✅ PHASE 0 IMAGE CREATED"
+        echo "═══════════════════════════════════════════════════════"
+        ls -lh "$output_img"
+        echo ""
+        echo "  Flash to SD card:"
+        echo "    sudo dd if=$output_img of=/dev/rdiskN bs=4m status=progress"
+    else
+        err "Output image not found — check inject_atlas.sh output"
+    fi
+}
+
 # ── Main ─────────────────────────────────────────────────────────────
 case "${1:-help}" in
     clone)   do_clone "$2" "$3" ;;
     restore) do_restore "$2" "$3" ;;
+    insert)  do_insert "$2" "$3" ;;
     list)    do_list ;;
     *)
-        echo "ODS Atlas SD Card Tool"
+        echo "ODS Atlas SD Card & Image Tool"
         echo ""
         echo "Usage:"
-        echo "  ods-sd clone   /dev/diskN [name]    Clone SD card"
-        echo "  ods-sd restore /dev/diskN  name     Restore SD card"
-        echo "  ods-sd list                         List clones"
+        echo "  ods-sd insert  base.img output.img    Phase 0: Create golden image"
+        echo "  ods-sd clone   /dev/diskN [name]      Phase 1: Clone SD card"
+        echo "  ods-sd restore /dev/diskN  name       Phase 1: Restore SD card"
+        echo "  ods-sd list                           List available clones"
         echo ""
         echo "Prerequisites:"
         echo "  brew install lima"

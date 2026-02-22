@@ -132,3 +132,81 @@ This ensures you can always roll back to the last known-good state without rebui
 | `atlas_firstboot.sh` | `scripts/` in repo | Firstboot provisioning |
 | `restore_golden.sh` | `golden-clone*/` on jdl-mini-box | Phase 1 clone restore |
 | `atlas_secrets.conf` | `~/atlas-build/scripts/` on jdl-mini-box | Credentials (NOT in git) |
+
+---
+
+## Lima Portable Build Environment (Offsite)
+
+> **The Lima VM replaces jdl-mini-box for both Insert and Clone when working offsite.**
+
+### Setup (one-time)
+```bash
+brew install lima
+limactl create --name=atlas-build tools/atlas-build.yaml
+limactl start atlas-build
+```
+
+### VM Quick Reference
+```bash
+limactl shell atlas-build     # Shell into VM
+limactl stop atlas-build       # Suspend (instant resume later)
+limactl start atlas-build      # Resume
+```
+
+### Phase 0: Insert via Lima
+```bash
+# 1. Shell into Lima
+limactl shell atlas-build
+
+# 2. Navigate to repo (same path as Mac — shared virtiofs mount)
+cd /Users/robert.leejones/Documents/GitHub/ods-player-os-atlas
+
+# 3. Run insert (identical to jdl-mini-box)
+sudo bash scripts/inject_atlas.sh \
+  /path/to/Armbian_26.2.1_Rpi4b_trixie_current_6.18.9_minimal.img \
+  ~/Desktop/ods-atlas-golden-vN-P-TAG.img
+
+# 4. Output .img appears on Mac Desktop immediately (shared filesystem)
+# 5. Flash to SD card from Mac using Raspberry Pi Imager or dd
+```
+
+### Phase 1: Clone / Restore via Lima
+```bash
+# Clone an SD card (from Mac terminal — ods-sd handles the bridge)
+tools/ods-sd clone /dev/diskN my-backup-name
+
+# Restore an SD card
+tools/ods-sd restore /dev/diskN my-backup-name
+
+# List available clones
+tools/ods-sd list
+```
+
+**How `ods-sd` works under the hood:**
+1. Mac `dd` reads raw SD card → shared work dir (`/tmp/lima-sd-work/`)
+2. Lima `losetup` mounts the raw image as a loopback device
+3. Lima `partclone` clones each partition (filesystem-aware, compressed)
+4. Output is identical format to jdl-mini-box `golden-clone/`
+
+### Where to Put the Base Armbian Image
+
+| Location | When to Use |
+|----------|-------------|
+| `~/Desktop/` | Quick access (shared into Lima) |
+| Repo `images/` | Versioned base images (gitignored) |
+| `/tmp/lima-sd-work/` | Temporary working copies |
+
+### Prerequisites Checklist
+- [ ] `brew install lima` 
+- [ ] `limactl create --name=atlas-build tools/atlas-build.yaml`
+- [ ] `atlas_secrets.conf` copied into Lima (see below)
+- [ ] Base Armbian `.img` available on shared path
+
+### Secrets for Lima (first time only)
+```bash
+# Copy secrets into the VM's working directory
+limactl shell atlas-build -- bash -c 'mkdir -p ~/atlas-build/scripts'
+# Then manually create ~/atlas-build/scripts/atlas_secrets.conf inside Lima
+# (contains passwords — never commit to git)
+```
+
