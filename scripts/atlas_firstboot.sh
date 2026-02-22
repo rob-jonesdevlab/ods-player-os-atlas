@@ -1212,20 +1212,47 @@ EOF
 
 # ─── Step 11: Finalize ─────────────────────────────────────────────────────
 
-finalize() {
-    log "🏁 Step 11: Finalizing..."
+finalize_phase1() {
+    log "🏁 Phase 1 complete — preparing for clone"
 
-    # Disable this firstboot service so it doesn't run again
-    systemctl disable atlas-firstboot.service 2>/dev/null || true
+    # Set Phase 2 marker — next boot will run device-specific enrollment
+    mkdir -p /var/lib/ods
+    echo "2" > /var/lib/ods/phase
 
-    # Clean up cloned repo
+    # Clean up cloned repo (saves ~100MB on cloned image)
     rm -rf /tmp/atlas_repo
 
     # Copy log to persistent location
-    cp "$LOG_FILE" /home/signage/ODS/logs/atlas_firstboot.log 2>/dev/null || true
+    cp "$LOG_FILE" /home/signage/ODS/logs/atlas_phase1.log 2>/dev/null || true
 
-    log "  ✅ Firstboot service disabled"
-    log "🎉 Atlas Player OS setup complete!"
+    log "  ✅ Phase marker set (/var/lib/ods/phase = 2)"
+    log "  ✅ Firstboot service remains enabled (Phase 2 will run on next boot)"
+    log ""
+    log "  ╔══════════════════════════════════════════════════════╗"
+    log "  ║   GOLDEN IMAGE READY — Clone this SD card now!      ║"
+    log "  ║   System will shut down in 5 seconds.               ║"
+    log "  ║                                                     ║"
+    log "  ║   Next boot: Esper + RustDesk enrollment (Phase 2)  ║"
+    log "  ╚══════════════════════════════════════════════════════╝"
+    log ""
+    sleep 5
+    shutdown -h now
+}
+
+finalize_phase2() {
+    log "🏁 Phase 2 complete — device enrolled"
+
+    # Disable firstboot service — no more phases needed
+    systemctl disable atlas-firstboot.service 2>/dev/null || true
+
+    # Remove phase marker
+    rm -f /var/lib/ods/phase
+
+    # Copy log to persistent location
+    cp "$LOG_FILE" /home/signage/ODS/logs/atlas_phase2.log 2>/dev/null || true
+
+    log "  ✅ Firstboot service disabled (all phases complete)"
+    log "🎉 Atlas Player OS — fully enrolled and ready!"
     log "🔄 Rebooting to production kiosk in 5 seconds..."
     sleep 5
     reboot
@@ -1234,23 +1261,40 @@ finalize() {
 # ─── Main ───────────────────────────────────────────────────────────────────
 
 main() {
-    setup_console
-    log "🚀 ODS Player OS Atlas — Automated First Boot"
-    log "🔐 Running as: $(whoami) (UID: $EUID)"
-    log "💻 Host: $(hostname)"
+    PHASE_FILE="/var/lib/ods/phase"
 
-    bypass_firstlogin
-    install_packages
-    create_users
-    deploy_atlas
-    deploy_services
-    deploy_kiosk_scripts
-    set_hostname
-    deploy_plymouth
-    configure_boot
-    enroll_esper
-    install_rustdesk
-    finalize
+    if [ -f "$PHASE_FILE" ] && [ "$(cat $PHASE_FILE)" = "2" ]; then
+        # ══════════════════════════════════════════════════════════════════
+        # PHASE 2: Device-Specific Enrollment (runs on cloned devices)
+        # ══════════════════════════════════════════════════════════════════
+        setup_console
+        log "🚀 ODS Atlas — Phase 2: Device Enrollment"
+        log "📋 This device was cloned from the golden image"
+        log "💻 Current host: $(hostname)"
+
+        set_hostname          # Generate unique three-word hostname
+        enroll_esper          # Esper MDM enrollment
+        install_rustdesk      # RustDesk remote access
+        finalize_phase2       # Disable service + reboot to production
+    else
+        # ══════════════════════════════════════════════════════════════════
+        # PHASE 1: Full Provisioning (runs once to create golden image)
+        # ══════════════════════════════════════════════════════════════════
+        setup_console
+        log "🚀 ODS Atlas — Phase 1: Golden Image Provisioning"
+        log "🔐 Running as: $(whoami) (UID: $EUID)"
+        log "💻 Host: $(hostname)"
+
+        bypass_firstlogin
+        install_packages
+        create_users
+        deploy_atlas
+        deploy_services
+        deploy_kiosk_scripts
+        deploy_plymouth
+        configure_boot
+        finalize_phase1       # Set phase=2 marker + shutdown for cloning
+    fi
 }
 
 # ─── Safety Checks ──────────────────────────────────────────────────────────
@@ -1268,3 +1312,4 @@ else
 fi
 
 main "$@"
+
