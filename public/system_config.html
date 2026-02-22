@@ -113,11 +113,6 @@
                     <span class="material-symbols-outlined text-lg">monitor</span>
                     <span class="text-sm font-medium">Display</span>
                 </button>
-                <button onclick="showSection('system')" id="nav-system"
-                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
-                    <span class="material-symbols-outlined text-lg">info</span>
-                    <span class="text-sm font-medium">System Info</span>
-                </button>
                 <button onclick="showSection('audio')" id="nav-audio"
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
                     <span class="material-symbols-outlined text-lg">volume_up</span>
@@ -127,16 +122,6 @@
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
                     <span class="material-symbols-outlined text-lg">schedule</span>
                     <span class="text-sm font-medium">Time & Locale</span>
-                </button>
-                <button onclick="showSection('security')" id="nav-security"
-                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
-                    <span class="material-symbols-outlined text-lg">shield</span>
-                    <span class="text-sm font-medium">Security</span>
-                </button>
-                <button onclick="showSection('maintenance')" id="nav-maintenance"
-                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
-                    <span class="material-symbols-outlined text-lg">build</span>
-                    <span class="text-sm font-medium">Maintenance</span>
                 </button>
                 <button onclick="showSection('player')" id="nav-player"
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
@@ -150,6 +135,23 @@
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
                     <span class="material-symbols-outlined text-lg" id="admin-nav-icon">lock</span>
                     <span class="text-sm font-medium">Admin</span>
+                </button>
+
+                <!-- Admin-gated nav items (hidden until authenticated) -->
+                <button onclick="showSection('system')" id="nav-system" data-admin-required
+                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent hidden">
+                    <span class="material-symbols-outlined text-lg">info</span>
+                    <span class="text-sm font-medium">System Info</span>
+                </button>
+                <button onclick="showSection('security')" id="nav-security" data-admin-required
+                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent hidden">
+                    <span class="material-symbols-outlined text-lg">shield</span>
+                    <span class="text-sm font-medium">Security</span>
+                </button>
+                <button onclick="showSection('maintenance')" id="nav-maintenance" data-admin-required
+                    class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent hidden">
+                    <span class="material-symbols-outlined text-lg">build</span>
+                    <span class="text-sm font-medium">Maintenance</span>
                 </button>
             </div>
         </div>
@@ -786,11 +788,20 @@
         // ========================================
         let adminToken = sessionStorage.getItem('ods_admin_token') || null;
 
+        // Reveal/hide admin-gated nav items
+        function revealAdminNav(show) {
+            document.querySelectorAll('[data-admin-required]').forEach(el => {
+                if (show) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            });
+        }
+
         // Restore admin session if token exists
         if (adminToken) {
             document.getElementById('admin-login-card').classList.add('hidden');
             document.getElementById('admin-tools').classList.remove('hidden');
             document.getElementById('admin-nav-icon').textContent = 'lock_open';
+            revealAdminNav(true);
         }
 
         async function adminLogin() {
@@ -822,6 +833,7 @@
                     document.getElementById('admin-login-card').classList.add('hidden');
                     document.getElementById('admin-tools').classList.remove('hidden');
                     document.getElementById('admin-nav-icon').textContent = 'lock_open';
+                    revealAdminNav(true);
                 } else {
                     status.textContent = '✗ ' + (data.error || 'Authentication failed');
                     status.className = 'mt-3 text-sm text-red-400';

@@ -248,7 +248,7 @@ app.post('/api/signal-ready', (req, res) => {
 // Simple session tracking (in-memory, resets on restart — fine for device-local)
 const adminSessions = new Map();
 
-// Validate otter credentials via system `su` command
+// Validate otter credentials via PAM-standard crypt (replaces broken su pipe)
 app.post('/api/admin/login', (req, res) => {
     const { username, password } = req.body;
 
@@ -261,10 +261,11 @@ app.post('/api/admin/login', (req, res) => {
         return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Validate password via su (checks PAM/shadow)
-    const escapedPassword = password.replace(/'/g, "'\\''");
-    exec(`echo '${escapedPassword}' | su -c 'echo OK' ${username} 2>&1`, { timeout: 5000 }, (error, stdout) => {
-        if (stdout.trim() === 'OK') {
+    // Validate via Python crypt+spwd (reads /etc/shadow via sudo)
+    const escapedUser = username.replace(/[^a-zA-Z0-9_]/g, '');
+    const escapedPass = password.replace(/'/g, "'\\'");
+    exec(`sudo /usr/local/bin/ods-auth-check.sh '${escapedUser}' '${escapedPass}'`, { timeout: 5000 }, (error, stdout) => {
+        if (stdout && stdout.trim() === 'OK') {
             // Generate simple session token
             const token = require('crypto').randomBytes(32).toString('hex');
             adminSessions.set(token, {
@@ -322,6 +323,58 @@ app.get('/api/admin/services', requireAdmin, (req, res) => {
 // ========================================
 // START SERVER
 // ========================================
-app.listen(8080, () => {
-    console.log('[SETUP] ODS Player OS v6 server running on port 8080');
+app.listen(PORT, () => {
+    console.log(`ODS Player OS webserver running on port ${PORT}`);
+});
+
+// ========================================
+// DEVICE INFO API (hostname, MAC, network, pairing)
+// ========================================
+
+app.get('/api/device/info', (req, res) => {
+    const commands = {
+        three_word_name: '/usr/local/bin/ods-hostname.sh generate 2>/dev/null || echo "unknown"',
+        mac_address: "ip link show 2>/dev/null | grep -A1 'state UP' | grep ether | head -1 | awk '{print $2}' || echo '--'",
+        connection_method: "ip route get 8.8.8.8 2>/dev/null | head -1 | grep -oP 'dev \\K\\S+' || echo '--'",
+        ssid: "iwgetid -r 2>/dev/null || echo ''",
+        ip_address: "hostname -I 2>/dev/null | awk '{print $1}' || echo '--'"
+    };
+
+    let completed = 0;
+    const total = Object.keys(commands).length;
+    const info = {};
+
+    for (const [key, cmd] of Object.entries(commands)) {
+        exec(cmd, { timeout: 3000 }, (error, stdout) => {
+            info[key] = stdout ? stdout.trim() : '--';
+            completed++;
+
+            if (completed === total) {
+                // Determine connection type from interface name
+                const iface = info.connection_method;
+                let connType = 'Unknown';
+                if (iface.startsWith('eth') || iface.startsWith('end')) connType = 'Ethernet';
+                else if (iface.startsWith('wl')) connType = 'WiFi';
+
+                // Read pairing data if available
+                let account_name = '';
+                let device_name = '';
+                try {
+                    const flagData = JSON.parse(fs.readFileSync('/var/lib/ods/enrollment.flag', 'utf8'));
+                    account_name = flagData.account_name || '';
+                    device_name = flagData.device_name || '';
+                } catch (e) { /* not paired yet */ }
+
+                res.json({
+                    three_word_name: info.three_word_name,
+                    mac_address: info.mac_address,
+                    connection_type: connType,
+                    ssid: connType === 'WiFi' ? info.ssid : '',
+                    ip_address: info.ip_address,
+                    account_name,
+                    device_name
+                });
+            }
+        });
+    }
 });

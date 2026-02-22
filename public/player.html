@@ -5,240 +5,183 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ODS Player</title>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: { "primary": "#3c83f6" },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
+                },
+            },
+        }
+    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        html,
+        body {
+            background-color: #000 !important;
         }
 
         body {
-            background: #0a0a0a;
-            color: #ffffff;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
-            -webkit-user-select: none;
-            user-select: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
-        .container {
-            text-align: center;
-            max-width: 600px;
-            padding: 40px;
+        body.ready {
+            opacity: 1;
         }
 
-        .logo {
-            width: 120px;
-            height: 120px;
-            margin: 0 auto 32px;
-            background: linear-gradient(135deg, #ff6b00, #ff8c33);
-            border-radius: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 56px;
-            font-weight: 700;
-            color: #fff;
-            box-shadow: 0 8px 32px rgba(255, 107, 0, 0.3);
-            animation: pulse 3s ease-in-out infinite;
+        /* Premium glassmorphism card */
+        .glass-card {
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.88) 0%,
+                    rgba(255, 255, 255, 0.78) 50%,
+                    rgba(255, 255, 255, 0.85) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.12),
+                0 2px 8px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
 
-        @keyframes pulse {
+        .glass-pill {
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.85) 0%,
+                    rgba(255, 255, 255, 0.75) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow:
+                0 4px 16px rgba(0, 0, 0, 0.1),
+                0 1px 4px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        /* ODS logo pulse */
+        .logo-glow {
+            animation: logoGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes logoGlow {
 
             0%,
             100% {
-                box-shadow: 0 8px 32px rgba(255, 107, 0, 0.3);
+                filter: drop-shadow(0 4px 16px rgba(245, 132, 42, 0.3));
             }
 
             50% {
-                box-shadow: 0 8px 48px rgba(255, 107, 0, 0.5);
+                filter: drop-shadow(0 4px 24px rgba(245, 132, 42, 0.5));
             }
-        }
-
-        h1 {
-            font-size: 28px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: #ffffff;
-        }
-
-        .subtitle {
-            font-size: 16px;
-            color: #888;
-            margin-bottom: 40px;
-        }
-
-        .status-card {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            border-radius: 16px;
-            padding: 24px;
-            text-align: left;
-            margin-bottom: 24px;
-        }
-
-        .status-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #222;
-        }
-
-        .status-row:last-child {
-            border-bottom: none;
-        }
-
-        .status-label {
-            font-size: 14px;
-            color: #888;
-        }
-
-        .status-value {
-            font-size: 14px;
-            font-weight: 500;
-            color: #ddd;
-        }
-
-        .status-value.online {
-            color: #4caf50;
-        }
-
-        .status-value.offline {
-            color: #f44336;
-        }
-
-        .waiting-indicator {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
-            border-radius: 12px;
-            padding: 16px 24px;
-        }
-
-        .waiting-dot {
-            width: 10px;
-            height: 10px;
-            background: #ff6b00;
-            border-radius: 50%;
-            animation: blink 1.5s ease-in-out infinite;
-        }
-
-        @keyframes blink {
-
-            0%,
-            100% {
-                opacity: 1;
-            }
-
-            50% {
-                opacity: 0.3;
-            }
-        }
-
-        .waiting-text {
-            font-size: 14px;
-            color: #aaa;
-        }
-
-        .footer {
-            position: fixed;
-            bottom: 16px;
-            font-size: 11px;
-            color: #444;
         }
     </style>
 </head>
 
-<body>
-    <div class="container">
-        <div class="logo">O</div>
-        <h1>Player Ready</h1>
-        <p class="subtitle">Otter Digital Signage</p>
+<body class="bg-background-light text-slate-900 font-display min-h-screen overflow-hidden flex flex-col relative"
+    style="background: url('/resources/designs/ODS_Background.png') center/cover no-repeat fixed;">
 
-        <div class="status-card">
-            <div class="status-row">
-                <span class="status-label">Hostname</span>
-                <span class="status-value" id="hostname">Loading...</span>
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col items-center justify-center w-full px-4 z-10">
+        <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl"
+            style="min-width: 420px;">
+            <!-- ODS Logo — user-crafted brand asset -->
+            <div class="logo-glow mb-6">
+                <img src="/resources/ods-player-logo.png" alt="ODS" width="120" height="120"
+                    style="border-radius: 24px;" />
             </div>
-            <div class="status-row">
-                <span class="status-label">IP Address</span>
-                <span class="status-value" id="ip">Loading...</span>
-            </div>
-            <div class="status-row">
-                <span class="status-label">Network</span>
-                <span class="status-value" id="network">Checking...</span>
-            </div>
-            <div class="status-row">
-                <span class="status-label">CPU Temp</span>
-                <span class="status-value" id="cpu-temp">--</span>
-            </div>
-            <div class="status-row">
-                <span class="status-label">Last Update</span>
-                <span class="status-value" id="last-update">--</span>
+
+            <h2 class="text-3xl font-bold text-gray-900 mb-1">Player Ready</h2>
+            <p class="text-gray-600 mb-8 text-center text-base">Otter Digital Signage</p>
+
+            <!-- Device Info Card -->
+            <div class="w-full space-y-0 bg-white/60 rounded-xl border border-white/40 overflow-hidden">
+                <div class="flex justify-between items-center px-5 py-3 border-b border-gray-200/50">
+                    <span class="text-sm text-gray-500 font-medium">Account</span>
+                    <span class="text-sm font-semibold text-gray-800" id="account">Loading...</span>
+                </div>
+                <div class="flex justify-between items-center px-5 py-3 border-b border-gray-200/50">
+                    <span class="text-sm text-gray-500 font-medium">Device</span>
+                    <span class="text-sm font-semibold text-gray-800" id="device">Loading...</span>
+                </div>
+                <div class="flex justify-between items-center px-5 py-3 border-b border-gray-200/50">
+                    <span class="text-sm text-gray-500 font-medium">Hostname</span>
+                    <span class="text-sm font-semibold text-gray-800" id="hostname">Loading...</span>
+                </div>
+                <div class="flex justify-between items-center px-5 py-3 border-b border-gray-200/50">
+                    <span class="text-sm text-gray-500 font-medium">IP Address</span>
+                    <span class="text-sm font-semibold text-gray-800" id="ip">Loading...</span>
+                </div>
+                <div class="flex justify-between items-center px-5 py-3">
+                    <span class="text-sm text-gray-500 font-medium">Network</span>
+                    <span class="text-sm font-semibold" id="network">Checking...</span>
+                </div>
             </div>
         </div>
+    </main>
 
-        <div class="waiting-indicator">
-            <div class="waiting-dot"></div>
-            <span class="waiting-text" id="status">Waiting for content from ODS Cloud</span>
+    <!-- Status Pill -->
+    <footer class="pb-12 pt-6 w-full flex justify-center z-10">
+        <div class="glass-pill px-7 py-3.5 rounded-full inline-flex items-center gap-3 shadow-lg">
+            <span class="relative flex h-3.5 w-3.5">
+                <span
+                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500"></span>
+            </span>
+            <span class="text-gray-900 text-sm font-medium tracking-wide" id="status">Waiting for content from ODS
+                Cloud</span>
         </div>
-    </div>
-
-    <div class="footer" id="footer">Press Ctrl+Alt+Shift+O for System Options</div>
+    </footer>
 
     <script>
-        // Keep-alive polling — prevents browser idle and updates status
-        function updateStatus() {
-            fetch('/api/system/info')
+        // ========================================
+        // DEVICE INFO POLLING
+        // ========================================
+        function updateDeviceInfo() {
+            fetch('/api/device/info')
                 .then(r => r.json())
                 .then(data => {
-                    document.getElementById('hostname').textContent = data.hostname || '--';
-                    document.getElementById('ip').textContent = data.ip || '--';
-                    document.getElementById('cpu-temp').textContent =
-                        data.cpu_temp ? data.cpu_temp + '°C' : '--';
-                    document.getElementById('last-update').textContent =
-                        new Date().toLocaleTimeString();
-                })
-                .catch(() => {
-                    document.getElementById('last-update').textContent =
-                        new Date().toLocaleTimeString() + ' (error)';
-                });
+                    document.getElementById('account').textContent = data.account_name || 'Not assigned';
+                    document.getElementById('device').textContent = data.device_name || 'Not assigned';
+                    document.getElementById('hostname').textContent = data.three_word_name || '--';
+                    document.getElementById('ip').textContent = data.ip_address || '--';
 
-            fetch('/api/status')
-                .then(r => r.json())
-                .then(data => {
-                    const el = document.getElementById('network');
-                    if (data.hasInternet) {
-                        el.textContent = 'Connected';
-                        el.className = 'status-value online';
+                    // Network with color coding
+                    const networkEl = document.getElementById('network');
+                    if (data.connection_type === 'Ethernet') {
+                        networkEl.textContent = 'Ethernet';
+                        networkEl.className = 'text-sm font-semibold text-emerald-600';
+                    } else if (data.connection_type === 'WiFi') {
+                        networkEl.textContent = data.ssid ? `WiFi (${data.ssid})` : 'WiFi';
+                        networkEl.className = 'text-sm font-semibold text-emerald-600';
                     } else {
-                        el.textContent = 'Offline';
-                        el.className = 'status-value offline';
+                        networkEl.textContent = 'Disconnected';
+                        networkEl.className = 'text-sm font-semibold text-red-500';
                     }
                 })
                 .catch(() => {
-                    const el = document.getElementById('network');
-                    el.textContent = 'Unknown';
-                    el.className = 'status-value';
+                    document.getElementById('ip').textContent = '--';
                 });
         }
 
         // Initial fetch + 60-second polling
-        updateStatus();
-        setInterval(updateStatus, 60000);
+        updateDeviceInfo();
+        setInterval(updateDeviceInfo, 60000);
 
         // Signal page is ready (for Plymouth transition)
         fetch('/api/signal-ready', { method: 'POST' }).catch(() => { });
 
-        // Keyboard security — block all except Ctrl+Alt+Shift+O for Options
+        // ========================================
+        // FOUC GUARD
+        // ========================================
+        function revealPage() { document.body.classList.add('ready'); }
+        window.addEventListener('load', revealPage);
+        setTimeout(revealPage, 6000);
+
+        // ========================================
+        // KEYBOARD SECURITY
+        // ========================================
         document.addEventListener('keydown', function (e) {
             if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'O') {
                 e.preventDefault();
