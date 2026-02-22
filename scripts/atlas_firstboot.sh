@@ -518,23 +518,29 @@ touch /tmp/ods-kiosk-starting
 plymouth deactivate 2>/dev/null || true
 log "Plymouth deactivated (DRM released for Xorg)"
 
-# ── STAGE 3: X SERVER (grey flash fixed) ─────────────────────────────
-# FIX: removed '-background none' (= grey stipple default)
-# FIX: xsetroot runs IMMEDIATELY inside the Xorg ready loop
+# ── STAGE 3: X SERVER (grey flash eliminated) ────────────────────────
+# The modeset driver re-initializes kms color map 6+ times during startup.
+# A single xsetroot won't cover all resets. Solution: continuous repaint loop.
 export HOME=/home/signage
 Xorg :0 -nolisten tcp -novtswitch vt1 &
 
+# Wait for Xorg to accept connections
 for i in $(seq 1 120); do
-    if xdpyinfo -display :0 >/dev/null 2>&1; then
-        # Paint root black IMMEDIATELY — before any WM or client connects
-        DISPLAY=:0 xsetroot -solid "#000000" 2>/dev/null
-        break
-    fi
+    if xdpyinfo -display :0 >/dev/null 2>&1; then break; fi
     sleep 0.05
 done
 export DISPLAY=:0
-xsetroot -solid "#000000" 2>/dev/null || true
-log "X server started on VT1 (black root)"
+
+# CONTINUOUS black repaint — covers all modeset color map reinitializations
+# Runs for 10s in background, repainting black every 50ms
+(
+    for j in $(seq 1 200); do
+        xsetroot -solid "#000000" 2>/dev/null
+        sleep 0.05
+    done
+) &
+BLACK_LOOP_PID=$!
+log "X server started — continuous black repaint active"
 
 # ── SLEEP PREVENTION ──────────────────────────────────────────────────
 xset -dpms 2>/dev/null || true
