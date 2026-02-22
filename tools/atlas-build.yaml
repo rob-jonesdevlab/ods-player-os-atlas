@@ -1,0 +1,109 @@
+# ODS Atlas Build VM — Lima Configuration
+# Portable jdl-mini-box equivalent for offsite development
+#
+# Usage:
+#   limactl create --name=atlas-build atlas-build.yaml
+#   limactl start atlas-build
+#   limactl shell atlas-build
+#
+# SD Card Workflow (shared filesystem bridge):
+#   Mac:  ods-sd clone /dev/diskN            # reads raw SD → shared file
+#   Lima: ods-sd partclone ~/sd-work/raw.img  # partclone on loopback
+#   Mac:  ods-sd restore /dev/diskN           # writes back from optimized img
+
+# ── VM Resources ─────────────────────────────────────────────────────
+cpus: 4
+memory: 2GiB
+disk: 20GiB
+
+# ── Base Image ───────────────────────────────────────────────────────
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
+    arch: "aarch64"
+  - location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+    arch: "x86_64"
+
+# ── Shared Filesystem ───────────────────────────────────────────────
+# Mount Mac directories inside the VM for seamless file sharing
+mounts:
+  - location: "~/Documents/GitHub"
+    writable: true
+  - location: "~/Desktop"
+    writable: true
+  - location: "/tmp/lima-sd-work"
+    writable: true
+
+# ── Provisioning ─────────────────────────────────────────────────────
+# Pre-install all tools matching jdl-mini-box build environment
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eux -o pipefail
+
+      echo "══════════════════════════════════════════════════"
+      echo "  ODS Atlas Build VM — Provisioning"
+      echo "══════════════════════════════════════════════════"
+
+      # Update package lists
+      apt-get update -qq
+
+      # ── Core build tools (matches jdl-mini-box) ──────────────
+      apt-get install -y --no-install-recommends \
+        partclone \
+        pigz \
+        fdisk \
+        e2fsprogs \
+        dosfstools \
+        util-linux \
+        parted \
+        imagemagick \
+        python3 \
+        git \
+        curl \
+        wget \
+        sshpass \
+        jq \
+        tree
+
+      # ── Verify critical tools ────────────────────────────────
+      echo ""
+      echo "=== Installed Tools ==="
+      for cmd in partclone.ext4 partclone.fat32 pigz sfdisk fdisk \
+                 e2fsck resize2fs losetup convert python3 git curl sshpass; do
+        if command -v "$cmd" &>/dev/null; then
+          echo "  ✅ $cmd"
+        else
+          echo "  ❌ $cmd MISSING"
+        fi
+      done
+
+      # ── Create working directories ───────────────────────────
+      mkdir -p /opt/ods-atlas/scripts
+      mkdir -p /tmp/lima-sd-work
+
+      echo ""
+      echo "══════════════════════════════════════════════════"
+      echo "  ✅ ODS Atlas Build VM — Ready"
+      echo "══════════════════════════════════════════════════"
+
+# ── Network ──────────────────────────────────────────────────────────
+# Host networking for SSH access to dev devices when on same network
+hostResolver:
+  enabled: true
+
+# ── Message ──────────────────────────────────────────────────────────
+message: |
+  ODS Atlas Build VM is ready!
+
+  Quick start:
+    limactl shell atlas-build
+
+  SD Card clone (from Mac terminal):
+    ods-sd clone /dev/diskN my-backup-name
+
+  SD Card restore (from Mac terminal):
+    ods-sd restore /dev/diskN my-backup-name
+
+  Access jdl-mini-box (when on local network):
+    sshpass -f /tmp/.ods_sshpass ssh jones-dev-lab@10.111.123.134

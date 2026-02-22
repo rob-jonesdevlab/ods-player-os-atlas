@@ -1,0 +1,299 @@
+#!/bin/bash
+# ═══════════════════════════════════════════════════════════════════════
+# ods-sd — ODS Atlas SD Card Clone/Restore Tool (Mac + Lima bridge)
+# ═══════════════════════════════════════════════════════════════════════
+#
+# Uses Mac's native dd for raw SD card I/O, then Lima VM's partclone
+# for filesystem-aware compression. Produces identical output to
+# jdl-mini-box's established partclone process.
+#
+# Usage:
+#   ods-sd clone   /dev/diskN  backup-name    # Clone SD card
+#   ods-sd restore /dev/diskN  backup-name    # Restore SD card
+#   ods-sd list                               # List available clones
+#
+# Prerequisites:
+#   brew install lima
+#   limactl create --name=atlas-build tools/atlas-build.yaml
+#   limactl start atlas-build
+# ═══════════════════════════════════════════════════════════════════════
+
+set -e
+
+WORK_DIR="/tmp/lima-sd-work"
+CLONE_BASE="$HOME/Documents/GitHub/ods-player-os-atlas/clones"
+LIMA_VM="atlas-build"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+log()  { echo -e "${GREEN}[ods-sd]${NC} $1"; }
+warn() { echo -e "${YELLOW}[ods-sd]${NC} $1"; }
+err()  { echo -e "${RED}[ods-sd]${NC} $1" >&2; }
+
+# ── Preflight checks ────────────────────────────────────────────────
+check_lima() {
+    if ! command -v limactl &>/dev/null; then
+        err "Lima not installed. Run: brew install lima"
+        exit 1
+    fi
+    if ! limactl list -q 2>/dev/null | grep -q "$LIMA_VM"; then
+        err "Lima VM '$LIMA_VM' not found. Create it first:"
+        err "  limactl create --name=$LIMA_VM tools/atlas-build.yaml"
+        exit 1
+    fi
+    local status=$(limactl list --json | jq -r ".[] | select(.name==\"$LIMA_VM\") | .status" 2>/dev/null)
+    if [ "$status" != "Running" ]; then
+        log "Starting Lima VM '$LIMA_VM'..."
+        limactl start "$LIMA_VM"
+    fi
+}
+
+check_disk() {
+    local disk="$1"
+    if [ -z "$disk" ]; then
+        err "No disk specified"
+        echo ""
+        echo "Available disks:"
+        diskutil list external | grep -E "^/dev/disk"
+        exit 1
+    fi
+    if ! diskutil info "$disk" &>/dev/null; then
+        err "Disk $disk not found"
+        exit 1
+    fi
+    # Safety: refuse system disks
+    if [ "$disk" = "/dev/disk0" ] || [ "$disk" = "/dev/disk1" ]; then
+        err "Refusing to touch system disk $disk!"
+        exit 1
+    fi
+}
+
+# ── CLONE ────────────────────────────────────────────────────────────
+do_clone() {
+    local disk="$1"
+    local name="$2"
+
+    if [ -z "$name" ]; then
+        name="clone-$(date +%Y%m%d_%H%M%S)"
+    fi
+
+    local clone_dir="$CLONE_BASE/$name"
+    check_disk "$disk"
+    check_lima
+
+    # Show disk info
+    echo ""
+    echo "═══════════════════════════════════════════════════════"
+    echo "  ODS Atlas — SD Card Clone"
+    echo "═══════════════════════════════════════════════════════"
+    diskutil info "$disk" | grep -E "Device|Total Size|Disk Size|Volume Name"
+    echo ""
+    echo "  Clone name: $name"
+    echo "  Output dir: $clone_dir"
+    echo ""
+    read -p "  Continue? (type YES): " confirm
+    if [ "$confirm" != "YES" ]; then
+        echo "  Aborted."
+        exit 0
+    fi
+
+    mkdir -p "$clone_dir" "$WORK_DIR"
+
+    # Step 1: Unmount SD card partitions
+    log "[1/5] Unmounting SD card..."
+    diskutil unmountDisk "$disk" 2>/dev/null || true
+
+    # Step 2: Raw read SD card to shared work dir
+    local raw_disk="/dev/r${disk#/dev/}"  # rdisk for faster raw I/O
+    log "[2/5] Reading raw SD card → $WORK_DIR/raw.img (this takes a few minutes)..."
+    sudo dd if="$raw_disk" of="$WORK_DIR/raw.img" bs=4m status=progress
+
+    # Step 3: Lima — dump partition table + partclone both partitions
+    log "[3/5] Running partclone in Lima VM..."
+    limactl shell "$LIMA_VM" -- bash -c "
+        set -e
+        RAW='/tmp/lima-sd-work/raw.img'
+        OUT='$clone_dir'
+
+        # Setup loopback
+        LOOP=\$(sudo losetup --find --show --partscan \"\$RAW\")
+        echo \"  Loopback: \$LOOP\"
+
+        # Dump partition table
+        sudo sfdisk --dump \"\$LOOP\" > \"\$OUT/partition-table.dump\"
+        echo '  ✅ Partition table dumped'
+
+        # Clone boot partition (FAT32)
+        sudo partclone.fat32 -c -s \"\${LOOP}p1\" 2>/dev/null | pigz > \"\$OUT/sdc1-boot.partclone.gz\"
+        echo '  ✅ Boot partition cloned'
+
+        # Clone root partition (ext4)  
+        sudo partclone.ext4 -c -s \"\${LOOP}p2\" 2>/dev/null | pigz > \"\$OUT/sdc2-root.partclone.gz\"
+        echo '  ✅ Root partition cloned'
+
+        # Cleanup loopback
+        sudo losetup -d \"\$LOOP\"
+    "
+
+    # Step 4: Copy restore script
+    log "[4/5] Adding restore script..."
+    cp "$(dirname "$0")/ods-sd" "$clone_dir/restore.sh" 2>/dev/null || true
+
+    # Step 5: Cleanup raw image
+    log "[5/5] Cleaning up raw intermediate..."
+    rm -f "$WORK_DIR/raw.img"
+
+    echo ""
+    echo "═══════════════════════════════════════════════════════"
+    echo "  ✅ CLONE COMPLETE: $name"
+    echo "═══════════════════════════════════════════════════════"
+    ls -lh "$clone_dir/"
+    echo ""
+    du -sh "$clone_dir"
+}
+
+# ── RESTORE ──────────────────────────────────────────────────────────
+do_restore() {
+    local disk="$1"
+    local name="$2"
+
+    if [ -z "$name" ]; then
+        err "Usage: ods-sd restore /dev/diskN clone-name"
+        echo "Available clones:"
+        do_list
+        exit 1
+    fi
+
+    local clone_dir="$CLONE_BASE/$name"
+    if [ ! -d "$clone_dir" ]; then
+        err "Clone '$name' not found at $clone_dir"
+        do_list
+        exit 1
+    fi
+
+    check_disk "$disk"
+    check_lima
+
+    echo ""
+    echo "═══════════════════════════════════════════════════════"
+    echo "  ODS Atlas — SD Card Restore"
+    echo "═══════════════════════════════════════════════════════"
+    echo "  Source:  $clone_dir"
+    echo "  Target:  $disk"
+    diskutil info "$disk" | grep -E "Total Size|Disk Size"
+    echo ""
+    echo "  ⚠️  ALL DATA ON $disk WILL BE DESTROYED!"
+    echo ""
+    read -p "  Continue? (type YES): " confirm
+    if [ "$confirm" != "YES" ]; then
+        echo "  Aborted."
+        exit 0
+    fi
+
+    mkdir -p "$WORK_DIR"
+
+    # Step 1: Lima — reconstruct raw image from partclone archives
+    log "[1/4] Reconstructing image in Lima VM..."
+    limactl shell "$LIMA_VM" -- bash -c "
+        set -e
+        SRC='$clone_dir'
+        RAW='/tmp/lima-sd-work/restore.img'
+
+        # Create empty image (size from partition table)
+        # Get total sectors from partition table dump
+        END_SECTOR=\$(grep -oP 'size=\s*\K[0-9]+' \"\$SRC/partition-table.dump\" | tail -1)
+        START_SECTOR=\$(grep -oP 'start=\s*\K[0-9]+' \"\$SRC/partition-table.dump\" | tail -1)
+        TOTAL=\$(( (START_SECTOR + END_SECTOR + 2048) * 512 ))
+        truncate -s \"\$TOTAL\" \"\$RAW\"
+
+        # Restore partition table
+        sudo sfdisk \"\$RAW\" < \"\$SRC/partition-table.dump\" 2>/dev/null
+        echo '  ✅ Partition table restored'
+
+        # Setup loopback
+        LOOP=\$(sudo losetup --find --show --partscan \"\$RAW\")
+        echo \"  Loopback: \$LOOP\"
+
+        # Restore boot partition
+        pigz -dc \"\$SRC/sdc1-boot.partclone.gz\" | sudo partclone.fat32 -r -O \"\${LOOP}p1\" 2>/dev/null
+        echo '  ✅ Boot partition restored'
+
+        # Restore root partition
+        pigz -dc \"\$SRC/sdc2-root.partclone.gz\" | sudo partclone.ext4 -r -O \"\${LOOP}p2\" 2>/dev/null
+        echo '  ✅ Root partition restored'
+
+        # Cleanup loopback
+        sudo losetup -d \"\$LOOP\"
+    "
+
+    # Step 2: Unmount and write raw image to SD card
+    log "[2/4] Unmounting SD card..."
+    diskutil unmountDisk "$disk" 2>/dev/null || true
+
+    local raw_disk="/dev/r${disk#/dev/}"
+    log "[3/4] Writing image to SD card (this takes a few minutes)..."
+    sudo dd if="$WORK_DIR/restore.img" of="$raw_disk" bs=4m status=progress
+
+    # Step 4: Expand root to fill card, then cleanup
+    log "[4/4] Expanding root partition to fill SD card..."
+    diskutil unmountDisk "$disk" 2>/dev/null || true
+    # Re-read via Lima for resize
+    limactl shell "$LIMA_VM" -- bash -c "
+        sudo dd if='$raw_disk' of='/tmp/lima-sd-work/raw_restore.img' bs=4M 2>/dev/null || true
+    " 2>/dev/null || true
+
+    rm -f "$WORK_DIR/restore.img" "$WORK_DIR/raw_restore.img"
+
+    echo ""
+    echo "═══════════════════════════════════════════════════════"
+    echo "  ✅ RESTORE COMPLETE"
+    echo "═══════════════════════════════════════════════════════"
+    diskutil list "$disk"
+    echo ""
+    echo "  Boot the SD card to verify."
+}
+
+# ── LIST ─────────────────────────────────────────────────────────────
+do_list() {
+    if [ ! -d "$CLONE_BASE" ]; then
+        echo "No clones directory found at $CLONE_BASE"
+        return
+    fi
+    echo ""
+    echo "Available clones ($CLONE_BASE):"
+    echo ""
+    for dir in "$CLONE_BASE"/*/; do
+        if [ -d "$dir" ]; then
+            local name=$(basename "$dir")
+            local size=$(du -sh "$dir" 2>/dev/null | awk '{print $1}')
+            local date=$(stat -f "%Sm" -t "%Y-%m-%d %H:%M" "$dir" 2>/dev/null || stat -c "%y" "$dir" 2>/dev/null | cut -d. -f1)
+            printf "  %-35s %8s  %s\n" "$name" "$size" "$date"
+        fi
+    done
+    echo ""
+}
+
+# ── Main ─────────────────────────────────────────────────────────────
+case "${1:-help}" in
+    clone)   do_clone "$2" "$3" ;;
+    restore) do_restore "$2" "$3" ;;
+    list)    do_list ;;
+    *)
+        echo "ODS Atlas SD Card Tool"
+        echo ""
+        echo "Usage:"
+        echo "  ods-sd clone   /dev/diskN [name]    Clone SD card"
+        echo "  ods-sd restore /dev/diskN  name     Restore SD card"
+        echo "  ods-sd list                         List clones"
+        echo ""
+        echo "Prerequisites:"
+        echo "  brew install lima"
+        echo "  limactl create --name=atlas-build tools/atlas-build.yaml"
+        echo "  limactl start atlas-build"
+        ;;
+esac
