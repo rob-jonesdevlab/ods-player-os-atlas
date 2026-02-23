@@ -14,6 +14,26 @@ ATTEMPT_FILE="/etc/ods/enrollment_attempts"
 ENROLLED_FLAG="/etc/ods/esper_enrolled.flag"
 SECRETS_FILE="/etc/ods/atlas_secrets.conf"
 MAX_ATTEMPTS=3
+LOCK_FILE="/tmp/ods-enrollment-boot.lock"
+
+# ── PREVENT SERVICE RESTART (critical fix) ──────────────────────────
+# ods-kiosk.service has Restart=always/RestartSec=10 which kills enrollment
+# after ~6s by restarting the phase selector. Disable restart during enrollment.
+if [ -f "$LOCK_FILE" ]; then
+    log "Enrollment already running (lock file exists) — exiting"
+    exit 0
+fi
+echo $$ > "$LOCK_FILE"
+trap 'rm -f "$LOCK_FILE"' EXIT
+
+# Override kiosk service to not restart while we're running
+mkdir -p /etc/systemd/system/ods-kiosk.service.d
+cat > /etc/systemd/system/ods-kiosk.service.d/no-restart-during-enroll.conf << 'OVERRIDE'
+[Service]
+Restart=no
+OVERRIDE
+systemctl daemon-reload 2>/dev/null || true
+log "Kiosk service restart disabled for enrollment"
 
 # Show a splash frame on the framebuffer
 show_frame() {
