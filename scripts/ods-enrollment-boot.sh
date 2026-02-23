@@ -48,14 +48,11 @@ STOP_FBI="/tmp/ods-stop-enroll-fbi"
 rm -f "$STOP_FBI"
 (
     while [ ! -f "$STOP_FBI" ]; do
-        show_frame "$ANIM_DIR/enroll_fbi_1.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.15
-        show_frame "$ANIM_DIR/enroll_fbi_2.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.175
-        show_frame "$ANIM_DIR/enroll_fbi_3.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.20
-        show_frame "$ANIM_DIR/enroll_fbi_4.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.25
-        show_frame "$ANIM_DIR/enroll_fbi_5.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.25
-        show_frame "$ANIM_DIR/enroll_fbi_6.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.30
-        show_frame "$ANIM_DIR/enroll_fbi_7.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.30
-        show_frame "$ANIM_DIR/enroll_fbi_8.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.30
+        show_frame "$ANIM_DIR/enroll_fbi_1.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.20
+        show_frame "$ANIM_DIR/enroll_fbi_2.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.25
+        show_frame "$ANIM_DIR/enroll_fbi_3.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.25
+        show_frame "$ANIM_DIR/enroll_fbi_4.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.30
+        show_frame "$ANIM_DIR/enroll_fbi_5.raw"; [ -f "$STOP_FBI" ] && break; sleep 0.35
     done
 ) &
 FBI_PID=$!
@@ -93,11 +90,11 @@ STOP_PROGRESS="/tmp/ods-stop-enroll-progress"
 rm -f "$STOP_PROGRESS"
 (
     while [ ! -f "$STOP_PROGRESS" ]; do
-        for _f in 1 2 3 4 5; do
-            [ -f "$STOP_PROGRESS" ] && break 2
-            show_frame "$ANIM_DIR/enroll_progress_${_f}.raw"
-            sleep 0.3
-        done
+        show_frame "$ANIM_DIR/enroll_progress_1.raw"; [ -f "$STOP_PROGRESS" ] && break; sleep 0.20
+        show_frame "$ANIM_DIR/enroll_progress_2.raw"; [ -f "$STOP_PROGRESS" ] && break; sleep 0.25
+        show_frame "$ANIM_DIR/enroll_progress_3.raw"; [ -f "$STOP_PROGRESS" ] && break; sleep 0.25
+        show_frame "$ANIM_DIR/enroll_progress_4.raw"; [ -f "$STOP_PROGRESS" ] && break; sleep 0.30
+        show_frame "$ANIM_DIR/enroll_progress_5.raw"; [ -f "$STOP_PROGRESS" ] && break; sleep 0.35
     done
 ) &
 PROGRESS_PID=$!
