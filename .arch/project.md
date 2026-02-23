@@ -1,8 +1,8 @@
 # ODS Player OS Atlas — Architecture
 
-**Last Updated:** February 22, 2026  
-**Golden Image:** v8-2-1-FLASH  
-**Status:** Active iteration — boot UX polish sprint complete, enrollment debugging
+**Last Updated:** February 23, 2026  
+**Golden Image:** v8-2-4-FLASH  
+**Status:** Active iteration — enrollment working, no-sandbox fix deployed
 
 ---
 
@@ -47,7 +47,7 @@ Base Armbian .img
         Production kiosk in ~15 minutes
 ```
 
-## Current State (v8-2-1-FLASH)
+## Current State (v8-2-4-FLASH)
 
 ### Completed — Core
 - ✅ 11-step automated firstboot (`atlas_firstboot.sh`, ~1280 lines)
@@ -80,6 +80,8 @@ Base Armbian .img
 - ✅ Secrets path symlink — `/etc/ods/atlas_secrets.conf` → `/usr/local/etc/`
 - ✅ `brand/splash/generated/` asset path — pre-built 4K PNGs + RGB565 raws
 - ✅ `assets/plymouth/ods/` upgraded to 4K — replaced all HD (1920x1080) assets
+- ✅ Enrollment race condition fix — lock file + `Restart=no` override during enrollment
+- ✅ Chromium sandbox — runs as `signage` user (no `--no-sandbox`)
 
 ### Version History
 
@@ -95,9 +97,12 @@ Base Armbian .img
 | v8-1-0 | `6e5f0b9` | Premium boot UX: 104 PNGs, 4K watermark, 5-frame FBI, throbber .90 |
 | v8-2-0 | `e6cafbf` | Secrets symlink, Plymouth .90/.5 config, generated assets path |
 | v8-2-1 | `312881f` | 4K watermark fix in assets/, enrollment 5-frame splash, HD purge |
+| v8-2-2 | `4a92dee` | Sync all 133 4K PNGs to assets/, throbber 106x106, Esper state cleanup |
+| v8-2-3 | `93f9239` | CRITICAL: Fix enrollment killed after 6s by kiosk service restart |
+| v8-2-4 | `2286a84` | Security: Remove --no-sandbox, Chromium runs as signage user |
 
 ### Pending / Next Version
-- [ ] Validate Esper enrollment end-to-end on fresh flash
+- [x] Validate Esper enrollment end-to-end on fresh flash
 - [ ] Wayland/Cage migration for zero-flash boot
 - [ ] OTA updates from ODS Cloud dashboard
 - [ ] Remote background/content push

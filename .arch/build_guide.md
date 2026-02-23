@@ -18,7 +18,7 @@
 │   ├── atlas-firstboot.service
 │   ├── ods-enrollment-boot.sh
 │   └── atlas_secrets.conf                                      # NOT in git
-└── ods-atlas-golden-v8-2-1-FLASH.img                           # Output (built)
+└── ods-atlas-golden-v8-2-4-FLASH.img                           # Output (built)
 ```
 
 ### `atlas_secrets.conf` (template)
