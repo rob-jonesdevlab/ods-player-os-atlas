@@ -111,6 +111,13 @@ else
     log "ERROR: Secrets file not found at $SECRETS_FILE"
 fi
 
+# Clean up any existing Esper state before enrolling
+log "Cleaning existing Esper state..."
+systemctl stop esper-cmse esper-telemetry 2>/dev/null || true
+rm -rf /var/lib/esper 2>/dev/null || true
+rm -f /var/log/onp.log 2>/dev/null || true
+log "Esper state cleaned"
+
 # Download and run enrollment setup
 cd /tmp
 if curl -sS --connect-timeout 15 --max-time 120 \
@@ -120,25 +127,40 @@ if curl -sS --connect-timeout 15 --max-time 120 \
     chmod +x /tmp/esper_setup.sh
     log "Management server setup script downloaded"
 
-    if bash /tmp/esper_setup.sh \
+    # Run enrollment — capture output to check for "already exists"
+    ENROLL_OUTPUT=$(bash /tmp/esper_setup.sh \
         --tenant "${ESPER_TENANT}" \
         --token "${ESPER_TOKEN}" \
         --blueprint "${ESPER_BLUEPRINT}" \
-        --group "${ESPER_GROUP}" 2>&1 | tee -a "$LOG_FILE"; then
+        --group "${ESPER_GROUP}" 2>&1) || true
+    ENROLL_EXIT=$?
+    echo "$ENROLL_OUTPUT" | tee -a "$LOG_FILE"
 
-        # Verify enrollment by checking if Esper agent starts
+    if [ $ENROLL_EXIT -eq 0 ]; then
+        # Clean exit — check agent
         sleep 5
         systemctl start esper-cmse 2>/dev/null || true
         sleep 3
-
         if systemctl is-active --quiet esper-cmse 2>/dev/null; then
             ENROLL_SUCCESS=true
             log "Management server enrollment SUCCEEDED — agent running"
         else
             log "WARN: Enrollment setup ran but agent not active"
         fi
+    elif echo "$ENROLL_OUTPUT" | grep -q "already exists"; then
+        # Device already enrolled in Esper — try to start agent with existing config
+        log "Device already enrolled in management server — attempting to use existing enrollment"
+        sleep 3
+        systemctl start esper-cmse 2>/dev/null || true
+        sleep 3
+        if systemctl is-active --quiet esper-cmse 2>/dev/null; then
+            ENROLL_SUCCESS=true
+            log "Existing enrollment VALID — agent running"
+        else
+            log "WARN: Device registered but agent won't start — may need manual de-enrollment"
+        fi
     else
-        log "ERROR: Management server setup script failed"
+        log "ERROR: Management server setup script failed (exit=$ENROLL_EXIT)"
     fi
     rm -f /tmp/esper_setup.sh
 else
