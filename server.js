@@ -237,12 +237,12 @@ app.get('/api/system/info', (req, res) => {
 // System actions
 app.post('/api/system/reboot', (req, res) => {
     res.json({ success: true, message: 'Rebooting in 3 seconds...' });
-    setTimeout(() => exec('reboot'), 3000);
+    setTimeout(() => exec('/usr/sbin/reboot'), 3000);
 });
 
 app.post('/api/system/shutdown', (req, res) => {
     res.json({ success: true, message: 'Shutting down in 3 seconds...' });
-    setTimeout(() => exec('shutdown -h now'), 3000);
+    setTimeout(() => exec('/usr/sbin/shutdown -h now'), 3000);
 });
 
 app.post('/api/system/resolution', (req, res) => {
@@ -281,7 +281,7 @@ app.post('/api/system/cache-clear', (req, res) => {
 app.post('/api/system/factory-reset', (req, res) => {
     res.json({ success: true, message: 'Factory reset initiated...' });
     setTimeout(() => {
-        exec('rm -rf /home/signage/.config/chromium && reboot');
+        exec('rm -rf /home/signage/.config/chromium && /usr/sbin/reboot');
     }, 2000);
 });
 
@@ -293,11 +293,29 @@ app.get('/api/system/logs', (req, res) => {
         health: 'journalctl -u ods-health-monitor --no-pager -n 100 2>/dev/null || echo "No health monitor logs"',
         services: 'systemctl status ods-kiosk ods-webserver ods-dpms-enforce.timer ods-display-config ods-health-monitor ods-enrollment-boot --no-pager 2>&1',
         system: 'dmesg | tail -100 2>/dev/null || echo "No dmesg access"',
-        esper: 'journalctl -u ods-enrollment-boot --no-pager -n 100 2>/dev/null || echo "No enrollment logs"'
+        esper: 'echo "=== ODS Enrollment ==="; cat /var/log/ods-enrollment.log 2>/dev/null; echo ""; echo "=== Esper CMSE ==="; tail -100 /var/log/esper-cmse.log 2>/dev/null; echo ""; echo "=== Esper Telemetry ==="; tail -50 /var/log/esper-telemetry.log 2>/dev/null'
     };
     const cmd = commands[type] || commands.boot;
     exec(cmd, { timeout: 10000 }, (error, stdout) => {
         res.json({ logs: stdout || 'No logs available', type });
+    });
+});
+
+// WiFi toggle (on/off)
+app.post('/api/wifi/toggle', (req, res) => {
+    const { enabled } = req.body;
+    const cmd = enabled ? 'ip link set wlan0 up 2>&1' : 'ip link set wlan0 down 2>&1';
+    exec(cmd, { timeout: 5000 }, (error) => {
+        if (error) return res.status(500).json({ error: 'Failed to toggle WiFi' });
+        res.json({ success: true, enabled, message: `WiFi ${enabled ? 'enabled' : 'disabled'}` });
+    });
+});
+
+// Get WiFi state
+app.get('/api/wifi/state', (req, res) => {
+    exec("ip link show wlan0 2>/dev/null | head -1", { timeout: 3000 }, (error, stdout) => {
+        const up = stdout && stdout.includes('UP');
+        res.json({ enabled: up });
     });
 });
 

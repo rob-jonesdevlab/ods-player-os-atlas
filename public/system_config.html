@@ -259,7 +259,14 @@
                 Network Configuration
             </h2>
             <div class="config-card rounded-xl p-6 mb-4">
-                <h3 class="text-lg font-semibold mb-4">WiFi Configuration</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">WiFi Configuration</h3>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-slate-400">WiFi</span>
+                        <div id="wifi-power-toggle" class="toggle-switch" onclick="toggleWiFiPower()"></div>
+                        <span id="wifi-power-label" class="text-xs text-slate-400">Off</span>
+                    </div>
+                </div>
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-400 mb-1.5">SSID (Network Name)</label>
@@ -389,7 +396,8 @@
                         <label class="block text-sm font-medium text-slate-400 mb-1.5">Timezone</label>
                         <div class="flex gap-3">
                             <select id="time-timezone"
-                                class="flex-1 px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-primary outline-none text-sm">
+                                class="px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-primary outline-none text-sm"
+                                style="flex: 0.65;">
                                 <option value="America/Los_Angeles" selected>Pacific (PT)</option>
                                 <option value="America/Denver">Mountain (MT)</option>
                                 <option value="America/Chicago">Central (CT)</option>
@@ -869,7 +877,7 @@
         async function applyResolution() {
             const resolution = document.getElementById('display-resolution').value;
             if (!resolution) { showAlert('No Mode', 'Select a resolution first', 'error'); return; }
-            confirmAction('Change Resolution', `Set resolution to ${resolution}? The display will change and services should be restarted for proper scaling.`, 'monitor', async () => {
+            confirmAction('Change Resolution', `Set resolution to ${resolution}? The display will update and services will be restarted to apply proper scaling.`, 'monitor', async () => {
                 try {
                     const res = await fetch('/api/system/resolution', {
                         method: 'POST',
@@ -878,7 +886,10 @@
                     });
                     const data = await res.json();
                     if (data.success) {
-                        showAlert('Resolution Applied', data.message, 'check_circle');
+                        confirmAction('Restart Services', 'Resolution changed. Restart services now to apply scaling?', 'refresh', async () => {
+                            await fetch('/api/admin/restart-services', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken || '' } });
+                            showAlert('Restarting', 'Services restarting — display will refresh.', 'check_circle');
+                        });
                     } else {
                         showAlert('Error', data.error || 'Failed to change resolution', 'error');
                     }
@@ -1071,8 +1082,35 @@
         // ========================================
         // INITIAL LOAD
         // ========================================
-        window.addEventListener('load', function () { refreshNetworkStatus(); refreshSystemInfo(); loadDisplayModes(); });
+        window.addEventListener('load', function () { refreshNetworkStatus(); refreshSystemInfo(); loadDisplayModes(); loadWiFiState(); });
         setInterval(function () { refreshNetworkStatus(); refreshSystemInfo(); }, 10000);
+
+        // WiFi toggle
+        async function toggleWiFiPower() {
+            const toggle = document.getElementById('wifi-power-toggle');
+            const newState = !toggle.classList.contains('active');
+            try {
+                const res = await fetch('/api/wifi/toggle', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled: newState }) });
+                const data = await res.json();
+                if (data.success) {
+                    toggle.classList.toggle('active');
+                    document.getElementById('wifi-power-label').textContent = newState ? 'On' : 'Off';
+                    if (newState) {
+                        showAlert('WiFi Enabled', 'WiFi radio is now on. You can scan for networks.', 'wifi');
+                    }
+                } else { showAlert('Error', data.error || 'Failed', 'error'); }
+            } catch (e) { showAlert('Error', e.message, 'error'); }
+        }
+
+        async function loadWiFiState() {
+            try {
+                const res = await fetch('/api/wifi/state');
+                const data = await res.json();
+                const toggle = document.getElementById('wifi-power-toggle');
+                if (data.enabled) { toggle.classList.add('active'); document.getElementById('wifi-power-label').textContent = 'On'; }
+                else { toggle.classList.remove('active'); document.getElementById('wifi-power-label').textContent = 'Off'; }
+            } catch (e) { console.error('WiFi state error:', e); }
+        }
     </script>
 </body>
 
