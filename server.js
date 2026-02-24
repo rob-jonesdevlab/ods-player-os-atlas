@@ -224,10 +224,19 @@ app.post('/api/system/factory-reset', (req, res) => {
     }, 2000);
 });
 
-// System logs
+// System logs — typed log viewer
 app.get('/api/system/logs', (req, res) => {
-    exec('journalctl -n 100 --no-pager -u ods-kiosk -u ods-webserver 2>/dev/null || tail -100 /var/log/ods-kiosk.log', (error, stdout) => {
-        res.json({ logs: stdout || 'No logs available' });
+    const type = req.query.type || 'boot';
+    const commands = {
+        boot: 'ls -t /var/log/ods/boot_*.log 2>/dev/null | head -1 | xargs cat 2>/dev/null || echo "No boot logs found"',
+        health: 'journalctl -u ods-health-monitor --no-pager -n 100 2>/dev/null || echo "No health monitor logs"',
+        services: 'systemctl status ods-kiosk ods-webserver ods-dpms-enforce.timer ods-display-config ods-health-monitor ods-enrollment-boot --no-pager 2>&1',
+        system: 'dmesg | tail -100 2>/dev/null || echo "No dmesg access"',
+        esper: 'journalctl -u ods-enrollment-boot --no-pager -n 100 2>/dev/null || echo "No enrollment logs"'
+    };
+    const cmd = commands[type] || commands.boot;
+    exec(cmd, { timeout: 10000 }, (error, stdout) => {
+        res.json({ logs: stdout || 'No logs available', type });
     });
 });
 
@@ -302,16 +311,27 @@ function requireAdmin(req, res, next) {
 
 // Launch admin terminal (opens xterm via Openbox — appears as overlay)
 app.post('/api/admin/terminal', requireAdmin, (req, res) => {
-    exec('DISPLAY=:0 xterm -title "ODS Admin Terminal" -fa "Monospace" -fs 14 -bg "#1a1a2e" -fg "#00ff88" &');
+    exec('DISPLAY=:0 xterm -title "Admin Terminal" -fa "Monospace" -fs 14 -bg "#1a1a2e" -fg "#00ff88" &');
     console.log(`[ADMIN] Terminal launched by ${req.adminUser}`);
     res.json({ success: true, message: 'Admin terminal launched' });
 });
 
-// Restart kiosk service
-app.post('/api/admin/restart-kiosk', requireAdmin, (req, res) => {
-    console.log(`[ADMIN] Kiosk restart requested by ${req.adminUser}`);
-    res.json({ success: true, message: 'Restarting kiosk...' });
-    setTimeout(() => exec('systemctl restart ods-kiosk'), 1000);
+// Restart all ODS services
+app.post('/api/admin/restart-services', requireAdmin, (req, res) => {
+    console.log(`[ADMIN] Services restart requested by ${req.adminUser}`);
+    res.json({ success: true, message: 'Restarting all ODS services...' });
+    setTimeout(() => exec('systemctl restart ods-kiosk ods-webserver ods-health-monitor ods-dpms-enforce.timer 2>/dev/null'), 1000);
+});
+
+// Toggle SSH
+app.post('/api/admin/ssh', requireAdmin, (req, res) => {
+    const { enabled } = req.body;
+    const action = enabled ? 'enable --now' : 'disable --now';
+    exec(`systemctl ${action} ssh 2>/dev/null || systemctl ${action} sshd 2>/dev/null`, (error) => {
+        if (error) return res.status(500).json({ error: 'Failed to toggle SSH' });
+        console.log(`[ADMIN] SSH ${enabled ? 'enabled' : 'disabled'} by ${req.adminUser}`);
+        res.json({ success: true, message: `SSH ${enabled ? 'enabled' : 'disabled'}` });
+    });
 });
 
 // View service status

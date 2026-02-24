@@ -80,10 +80,83 @@
         .stat-value {
             font-variant-numeric: tabular-nums;
         }
+
+        /* Custom modal overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+        }
+
+        .modal-box {
+            background: #1e293b;
+            border: 1px solid #475569;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 420px;
+            width: 90%;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+
+        .modal-overlay.visible .modal-box {
+            transform: scale(1);
+        }
+
+        /* Log tab buttons */
+        .log-tab {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            background: rgba(71, 85, 105, 0.3);
+            color: #94a3b8;
+            border: 1px solid transparent;
+        }
+
+        .log-tab.active {
+            background: rgba(60, 131, 246, 0.2);
+            color: #93c5fd;
+            border-color: rgba(60, 131, 246, 0.4);
+        }
+
+        .log-tab:hover:not(.active) {
+            background: rgba(71, 85, 105, 0.5);
+            color: #e2e8f0;
+        }
     </style>
 </head>
 
 <body class="dark bg-slate-900 text-white font-display min-h-screen overflow-hidden flex">
+
+    <!-- Modal System -->
+    <div id="modal-overlay" class="modal-overlay" style="display:none;" onclick="closeModal(event)">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="flex items-center gap-3 mb-4">
+                <span id="modal-icon" class="material-symbols-outlined text-2xl text-primary"></span>
+                <h3 id="modal-title" class="text-lg font-semibold"></h3>
+            </div>
+            <p id="modal-message" class="text-sm text-slate-300 mb-6"></p>
+            <div id="modal-actions" class="flex gap-3 justify-end"></div>
+        </div>
+    </div>
 
     <!-- Sidebar Navigation -->
     <nav class="w-64 bg-slate-800/90 border-r border-slate-700 flex flex-col h-screen flex-shrink-0">
@@ -148,10 +221,10 @@
                     <span class="material-symbols-outlined text-lg">shield</span>
                     <span class="text-sm font-medium">Security</span>
                 </button>
-                <button onclick="showSection('maintenance')" id="nav-maintenance" data-admin-required
+                <button onclick="showSection('logs')" id="nav-logs" data-admin-required
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent hidden">
-                    <span class="material-symbols-outlined text-lg">build</span>
-                    <span class="text-sm font-medium">Maintenance</span>
+                    <span class="material-symbols-outlined text-lg">description</span>
+                    <span class="text-sm font-medium">System Logs</span>
                 </button>
             </div>
         </div>
@@ -265,54 +338,6 @@
             </div>
         </section>
 
-        <!-- ==================== SYSTEM INFO ==================== -->
-        <section id="section-system" class="section-content hidden">
-            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
-                <span class="material-symbols-outlined text-primary">info</span>
-                System Information
-            </h2>
-            <div class="config-card rounded-xl p-6 mb-4">
-                <div class="grid grid-cols-3 gap-6">
-                    <div>
-                        <span class="text-sm text-slate-400">Hostname</span>
-                        <p id="sys-hostname" class="text-lg font-semibold stat-value">—</p>
-                    </div>
-                    <div>
-                        <span class="text-sm text-slate-400">CPU Temperature</span>
-                        <p id="sys-cpu-temp" class="text-lg font-semibold stat-value">—</p>
-                    </div>
-                    <div>
-                        <span class="text-sm text-slate-400">Uptime</span>
-                        <p id="sys-uptime" class="text-lg font-semibold stat-value">—</p>
-                    </div>
-                    <div>
-                        <span class="text-sm text-slate-400">RAM Usage</span>
-                        <p id="sys-ram" class="text-lg font-semibold stat-value">—</p>
-                        <div class="w-full bg-slate-700 rounded-full h-2 mt-1.5">
-                            <div id="sys-ram-bar" class="bg-primary h-2 rounded-full" style="width: 0%"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <span class="text-sm text-slate-400">Storage</span>
-                        <p id="sys-storage" class="text-lg font-semibold stat-value">—</p>
-                        <div class="w-full bg-slate-700 rounded-full h-2 mt-1.5">
-                            <div id="sys-storage-bar" class="bg-emerald-500 h-2 rounded-full" style="width: 0%"></div>
-                        </div>
-                    </div>
-                    <div>
-                        <span class="text-sm text-slate-400">OS Version</span>
-                        <p id="sys-os" class="text-lg font-semibold stat-value">—</p>
-                    </div>
-                </div>
-            </div>
-            <div class="config-card rounded-xl p-6">
-                <h3 class="text-lg font-semibold mb-4">Network Interfaces</h3>
-                <div id="sys-network-interfaces" class="text-sm text-slate-300 font-mono space-y-1">
-                    Loading...
-                </div>
-            </div>
-        </section>
-
         <!-- ==================== AUDIO ==================== -->
         <section id="section-audio" class="section-content hidden">
             <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
@@ -375,88 +400,6 @@
             </div>
         </section>
 
-        <!-- ==================== SECURITY ==================== -->
-        <section id="section-security" class="section-content hidden">
-            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
-                <span class="material-symbols-outlined text-primary">shield</span>
-                Security
-            </h2>
-            <div class="config-card rounded-xl p-6 mb-4">
-                <h3 class="text-lg font-semibold mb-4">SSH Access</h3>
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-slate-300">Allow remote SSH connections</p>
-                        <p class="text-xs text-slate-500 mt-0.5">Port 22 • Requires reboot</p>
-                    </div>
-                    <div id="ssh-toggle" class="toggle-switch active" onclick="toggleSSH()"></div>
-                </div>
-            </div>
-            <div class="config-card rounded-xl p-6">
-                <h3 class="text-lg font-semibold mb-4">Admin Password</h3>
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">New Password</label>
-                        <input id="admin-password" type="password" placeholder="Enter new password"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary outline-none text-sm" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Confirm Password</label>
-                        <input id="admin-password-confirm" type="password" placeholder="Confirm password"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary outline-none text-sm" />
-                    </div>
-                </div>
-                <button onclick="changePassword()"
-                    class="px-6 py-2.5 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors">
-                    Update Password
-                </button>
-            </div>
-        </section>
-
-        <!-- ==================== MAINTENANCE ==================== -->
-        <section id="section-maintenance" class="section-content hidden">
-            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
-                <span class="material-symbols-outlined text-primary">build</span>
-                Maintenance
-            </h2>
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <button onclick="systemAction('reboot')"
-                    class="config-card rounded-xl p-6 hover:border-primary/50 transition-colors cursor-pointer text-left">
-                    <span class="material-symbols-outlined text-2xl text-amber-400 mb-2">restart_alt</span>
-                    <h3 class="font-semibold mb-1">Reboot</h3>
-                    <p class="text-sm text-slate-400">Restart the player</p>
-                </button>
-                <button onclick="systemAction('shutdown')"
-                    class="config-card rounded-xl p-6 hover:border-red-500/50 transition-colors cursor-pointer text-left">
-                    <span class="material-symbols-outlined text-2xl text-red-400 mb-2">power_settings_new</span>
-                    <h3 class="font-semibold mb-1">Shutdown</h3>
-                    <p class="text-sm text-slate-400">Power off the player</p>
-                </button>
-                <button onclick="systemAction('cache-clear')"
-                    class="config-card rounded-xl p-6 hover:border-blue-500/50 transition-colors cursor-pointer text-left">
-                    <span class="material-symbols-outlined text-2xl text-blue-400 mb-2">delete_sweep</span>
-                    <h3 class="font-semibold mb-1">Clear Cache</h3>
-                    <p class="text-sm text-slate-400">Clear browser cache and data</p>
-                </button>
-                <button
-                    onclick="if(confirm('This will erase all data and reset to factory defaults. Continue?')) systemAction('factory-reset')"
-                    class="config-card rounded-xl p-6 hover:border-red-500/50 transition-colors cursor-pointer text-left">
-                    <span class="material-symbols-outlined text-2xl text-red-400 mb-2">settings_backup_restore</span>
-                    <h3 class="font-semibold mb-1">Factory Reset</h3>
-                    <p class="text-sm text-slate-400">Reset to factory defaults</p>
-                </button>
-            </div>
-            <div class="config-card rounded-xl p-6">
-                <h3 class="text-lg font-semibold mb-4">System Logs</h3>
-                <pre id="system-logs"
-                    class="bg-slate-800 p-4 rounded-lg text-xs text-slate-300 font-mono max-h-64 overflow-y-auto whitespace-pre-wrap">Loading logs...</pre>
-                <button onclick="loadLogs()"
-                    class="mt-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm text-slate-300 transition-colors flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">refresh</span>
-                    Refresh Logs
-                </button>
-            </div>
-        </section>
-
         <!-- ==================== PLAYER ==================== -->
         <section id="section-player" class="section-content hidden">
             <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
@@ -483,20 +426,146 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Reboot + Unpair: 50/50 row -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="config-card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-amber-400">restart_alt</span>
+                        Reboot Device
+                    </h3>
+                    <p class="text-sm text-slate-400 mb-4">Restart the player system.</p>
+                    <button
+                        onclick="confirmAction('Reboot Device', 'The player will restart. This takes about 30 seconds.', 'restart_alt', () => systemAction('reboot'))"
+                        class="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">restart_alt</span>
+                        Reboot
+                    </button>
+                </div>
+                <div class="config-card rounded-xl p-6">
+                    <h3 class="text-lg font-semibold mb-2 flex items-center gap-2 text-red-400">
+                        <span class="material-symbols-outlined text-red-400">link_off</span>
+                        Unpair Device
+                    </h3>
+                    <p class="text-sm text-slate-400 mb-4">Remove account pairing. Device will need re-pairing.</p>
+                    <button
+                        onclick="confirmAction('Unpair Device', 'This device will be unpaired from its account and will need to be re-paired.', 'link_off', unpairDevice)"
+                        class="px-6 py-2.5 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">link_off</span>
+                        Unpair
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SYSTEM INFO ==================== -->
+        <section id="section-system" class="section-content hidden">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">info</span>
+                System Information
+            </h2>
+            <div class="config-card rounded-xl p-6 mb-4">
+                <div class="grid grid-cols-3 gap-6">
+                    <div>
+                        <span class="text-sm text-slate-400">Hostname</span>
+                        <p id="sys-hostname" class="text-lg font-semibold stat-value">—</p>
+                    </div>
+                    <div>
+                        <span class="text-sm text-slate-400">CPU Temperature</span>
+                        <p id="sys-cpu-temp" class="text-lg font-semibold stat-value">—</p>
+                    </div>
+                    <div>
+                        <span class="text-sm text-slate-400">Uptime</span>
+                        <p id="sys-uptime" class="text-lg font-semibold stat-value">—</p>
+                    </div>
+                    <div>
+                        <span class="text-sm text-slate-400">RAM Usage</span>
+                        <p id="sys-ram" class="text-lg font-semibold stat-value">—</p>
+                        <div class="w-full bg-slate-700 rounded-full h-2 mt-1.5">
+                            <div id="sys-ram-bar" class="bg-primary h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-sm text-slate-400">Storage</span>
+                        <p id="sys-storage" class="text-lg font-semibold stat-value">—</p>
+                        <div class="w-full bg-slate-700 rounded-full h-2 mt-1.5">
+                            <div id="sys-storage-bar" class="bg-emerald-500 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-sm text-slate-400">OS Version</span>
+                        <p id="sys-os" class="text-lg font-semibold stat-value">—</p>
+                    </div>
+                </div>
+            </div>
             <div class="config-card rounded-xl p-6">
-                <h3 class="text-lg font-semibold mb-2 text-red-400">Danger Zone</h3>
-                <p class="text-sm text-slate-400 mb-4">Unpair this device from its account. The device will need to be
-                    re-paired.</p>
-                <button
-                    onclick="if(confirm('Unpair this device? It will need to be re-paired to an account.')) unpairDevice()"
-                    class="px-6 py-2.5 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
-                    <span class="material-symbols-outlined text-lg">link_off</span>
-                    Unpair Device
+                <h3 class="text-lg font-semibold mb-4">Network Interfaces</h3>
+                <div id="sys-network-interfaces" class="text-sm text-slate-300 font-mono space-y-1">
+                    Loading...
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SECURITY ==================== -->
+        <section id="section-security" class="section-content hidden">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">shield</span>
+                Security
+            </h2>
+            <div class="config-card rounded-xl p-6">
+                <h3 class="text-lg font-semibold mb-4">Admin Password</h3>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1.5">New Password</label>
+                        <input id="admin-password" type="password" placeholder="Enter new password"
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary outline-none text-sm" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Confirm Password</label>
+                        <input id="admin-password-confirm" type="password" placeholder="Confirm password"
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary outline-none text-sm" />
+                    </div>
+                </div>
+                <button onclick="changePassword()"
+                    class="px-6 py-2.5 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors">
+                    Update Password
                 </button>
             </div>
         </section>
 
-        <!-- ==================== ADMIN (Upgrade C) ==================== -->
+        <!-- ==================== SYSTEM LOGS ==================== -->
+        <section id="section-logs" class="section-content hidden">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary">description</span>
+                System Logs
+            </h2>
+            <div class="config-card rounded-xl p-6">
+                <!-- Header with refresh button -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex gap-2 flex-wrap">
+                        <button onclick="loadTypedLogs('boot')" id="log-tab-boot" class="log-tab active">Boot</button>
+                        <button onclick="loadTypedLogs('health')" id="log-tab-health" class="log-tab">Health</button>
+                        <button onclick="loadTypedLogs('services')" id="log-tab-services"
+                            class="log-tab">Services</button>
+                        <button onclick="loadTypedLogs('system')" id="log-tab-system" class="log-tab">System</button>
+                        <button onclick="loadTypedLogs('esper')" id="log-tab-esper" class="log-tab">Esper</button>
+                    </div>
+                    <button onclick="loadTypedLogs(currentLogType)"
+                        class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-slate-300 transition-colors">
+                        <span class="material-symbols-outlined text-sm">refresh</span>
+                        Refresh
+                    </button>
+                </div>
+                <pre id="log-viewer"
+                    class="bg-slate-800 p-4 rounded-lg text-xs text-slate-300 font-mono max-h-[500px] overflow-y-auto whitespace-pre-wrap">Select a log category above...</pre>
+                <div class="flex justify-between items-center mt-3 text-xs text-slate-500">
+                    <span id="log-type-label">Boot Logs</span>
+                    <span id="log-line-count"></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ADMIN ==================== -->
         <section id="section-admin" class="section-content hidden">
             <h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
                 <span class="material-symbols-outlined text-primary">admin_panel_settings</span>
@@ -532,6 +601,7 @@
 
             <!-- Admin Tools (hidden until authenticated) -->
             <div id="admin-tools" class="hidden">
+                <!-- Admin Tools Grid -->
                 <div class="config-card rounded-xl p-6 mb-4">
                     <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                         <span class="material-symbols-outlined text-emerald-400">lock_open</span>
@@ -545,30 +615,61 @@
                             <h4 class="font-semibold mb-1">Launch Terminal</h4>
                             <p class="text-xs text-slate-400">Open admin terminal overlay</p>
                         </button>
-                        <button onclick="adminAction('restart-kiosk')"
+                        <button onclick="adminAction('restart-services')"
                             class="config-card rounded-xl p-5 hover:border-amber-500/50 transition-colors cursor-pointer text-left">
                             <span class="material-symbols-outlined text-2xl text-amber-400 mb-2">refresh</span>
-                            <h4 class="font-semibold mb-1">Restart Kiosk</h4>
-                            <p class="text-xs text-slate-400">Restart Chromium kiosk service</p>
+                            <h4 class="font-semibold mb-1">Restart Services</h4>
+                            <p class="text-xs text-slate-400">Restart all ODS services</p>
                         </button>
-                        <button onclick="adminViewServices()"
+                        <button
+                            onclick="confirmAction('Clear Cache', 'Browser cache will be cleared. Restart will be needed for changes to take effect.', 'delete_sweep', () => systemAction('cache-clear'))"
                             class="config-card rounded-xl p-5 hover:border-blue-500/50 transition-colors cursor-pointer text-left">
-                            <span class="material-symbols-outlined text-2xl text-blue-400 mb-2">monitoring</span>
-                            <h4 class="font-semibold mb-1">Service Status</h4>
-                            <p class="text-xs text-slate-400">View all ODS service statuses</p>
+                            <span class="material-symbols-outlined text-2xl text-blue-400 mb-2">delete_sweep</span>
+                            <h4 class="font-semibold mb-1">Clear Cache</h4>
+                            <p class="text-xs text-slate-400">Clear browser cache and data</p>
                         </button>
-                        <button onclick="systemAction('reboot')"
+                        <button
+                            onclick="confirmAction('Factory Reset', 'This will erase all data and reset to factory defaults. This cannot be undone!', 'settings_backup_restore', () => systemAction('factory-reset'))"
+                            class="config-card rounded-xl p-5 hover:border-red-500/50 transition-colors cursor-pointer text-left">
+                            <span
+                                class="material-symbols-outlined text-2xl text-red-400 mb-2">settings_backup_restore</span>
+                            <h4 class="font-semibold mb-1">Factory Reset</h4>
+                            <p class="text-xs text-slate-400">Reset to factory defaults</p>
+                        </button>
+                        <button
+                            onclick="confirmAction('Shutdown', 'The player will power off completely.', 'power_settings_new', () => systemAction('shutdown'))"
                             class="config-card rounded-xl p-5 hover:border-red-500/50 transition-colors cursor-pointer text-left">
                             <span class="material-symbols-outlined text-2xl text-red-400 mb-2">power_settings_new</span>
-                            <h4 class="font-semibold mb-1">Reboot Device</h4>
-                            <p class="text-xs text-slate-400">Full system reboot</p>
+                            <h4 class="font-semibold mb-1">Shutdown</h4>
+                            <p class="text-xs text-slate-400">Power off the player</p>
                         </button>
+                        <div class="config-card rounded-xl p-5">
+                            <span class="material-symbols-outlined text-2xl text-cyan-400 mb-2">lan</span>
+                            <h4 class="font-semibold mb-1">SSH Access</h4>
+                            <p class="text-xs text-slate-400 mb-3">Allow remote SSH connections</p>
+                            <div class="flex items-center gap-3">
+                                <div id="ssh-toggle" class="toggle-switch active" onclick="toggleSSH()"></div>
+                                <span id="ssh-label" class="text-xs text-slate-400">Enabled</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div id="admin-services-output" class="config-card rounded-xl p-6 hidden">
-                    <h3 class="text-lg font-semibold mb-4">Service Status</h3>
+
+                <!-- Service Status Card (with refresh in top-right) -->
+                <div class="config-card rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold flex items-center gap-2">
+                            <span class="material-symbols-outlined text-blue-400">monitoring</span>
+                            Service Status
+                        </h3>
+                        <button onclick="adminViewServices()"
+                            class="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-slate-300 transition-colors">
+                            <span class="material-symbols-outlined text-sm">refresh</span>
+                            Refresh
+                        </button>
+                    </div>
                     <pre id="admin-services-log"
-                        class="bg-slate-800 p-4 rounded-lg text-xs text-slate-300 font-mono max-h-64 overflow-y-auto whitespace-pre-wrap">Loading...</pre>
+                        class="bg-slate-800 p-4 rounded-lg text-xs text-slate-300 font-mono max-h-64 overflow-y-auto whitespace-pre-wrap">Click Refresh to load service status...</pre>
                 </div>
             </div>
         </section>
@@ -583,6 +684,8 @@
             document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
             document.getElementById(`section-${name}`).classList.remove('hidden');
             document.getElementById(`nav-${name}`).classList.add('active');
+            // Auto-load logs when switching to logs tab
+            if (name === 'logs') loadTypedLogs(currentLogType);
         }
 
         function closeConfig() {
@@ -609,8 +712,15 @@
                 return;
             }
             if (e.key === 'Escape') {
+                // Close modal if open, otherwise close config
+                const modal = document.getElementById('modal-overlay');
+                if (modal.style.display !== 'none') {
+                    modal.style.display = 'none';
+                    modal.classList.remove('visible');
+                } else {
+                    closeConfig();
+                }
                 e.preventDefault();
-                closeConfig();
                 return;
             }
         }, true);
@@ -619,6 +729,53 @@
             e.preventDefault();
             return false;
         }, true);
+
+        // ========================================
+        // CUSTOM MODAL SYSTEM (replaces alert/confirm)
+        // ========================================
+        function showModal(title, message, icon, actions) {
+            const overlay = document.getElementById('modal-overlay');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('modal-icon').textContent = icon;
+
+            const actionsDiv = document.getElementById('modal-actions');
+            actionsDiv.innerHTML = '';
+            actions.forEach(a => {
+                const btn = document.createElement('button');
+                btn.textContent = a.label;
+                btn.className = a.primary
+                    ? 'px-5 py-2 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors'
+                    : 'px-5 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors';
+                if (a.danger) btn.className = 'px-5 py-2 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium transition-colors';
+                btn.onclick = () => { hideModal(); if (a.action) a.action(); };
+                actionsDiv.appendChild(btn);
+            });
+
+            overlay.style.display = 'flex';
+            requestAnimationFrame(() => overlay.classList.add('visible'));
+        }
+
+        function hideModal() {
+            const overlay = document.getElementById('modal-overlay');
+            overlay.classList.remove('visible');
+            setTimeout(() => overlay.style.display = 'none', 200);
+        }
+
+        function closeModal(event) {
+            if (event.target === event.currentTarget) hideModal();
+        }
+
+        function showAlert(title, message, icon = 'info') {
+            showModal(title, message, icon, [{ label: 'OK', primary: true }]);
+        }
+
+        function confirmAction(title, message, icon, onConfirm) {
+            showModal(title, message, icon, [
+                { label: 'Cancel', primary: false },
+                { label: 'Confirm', danger: true, action: onConfirm }
+            ]);
+        }
 
         // ========================================
         // WIFI
@@ -736,28 +893,78 @@
                 const res = await fetch(`/api/system/${action}`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
-                    alert(data.message || `${action} initiated`);
+                    showAlert('Success', data.message || `${action} initiated`, 'check_circle');
                 } else {
-                    alert(data.error || `${action} failed`);
+                    showAlert('Error', data.error || `${action} failed`, 'error');
                 }
             } catch (e) {
-                alert('Error: ' + e.message);
+                showAlert('Error', 'Error: ' + e.message, 'error');
             }
         }
 
-        async function loadLogs() {
+        // ========================================
+        // SYSTEM LOGS (typed viewer)
+        // ========================================
+        let currentLogType = 'boot';
+        const logTypeLabels = {
+            boot: 'Boot Logs',
+            health: 'Health Monitor',
+            services: 'Service Status',
+            system: 'System / Kernel',
+            esper: 'Esper Enrollment'
+        };
+
+        async function loadTypedLogs(type) {
+            currentLogType = type;
+            // Update tab styling
+            document.querySelectorAll('.log-tab').forEach(t => t.classList.remove('active'));
+            const tab = document.getElementById(`log-tab-${type}`);
+            if (tab) tab.classList.add('active');
+
+            document.getElementById('log-type-label').textContent = logTypeLabels[type] || type;
+            document.getElementById('log-viewer').textContent = 'Loading...';
+            document.getElementById('log-line-count').textContent = '';
+
             try {
-                const res = await fetch('/api/system/logs');
+                const res = await fetch(`/api/system/logs?type=${type}`);
                 const data = await res.json();
-                document.getElementById('system-logs').textContent = data.logs || 'No logs available';
+                const text = data.logs || 'No logs available';
+                document.getElementById('log-viewer').textContent = text;
+                const lines = text.split('\n').length;
+                document.getElementById('log-line-count').textContent = `${lines} lines`;
             } catch (e) {
-                document.getElementById('system-logs').textContent = 'Error loading logs';
+                document.getElementById('log-viewer').textContent = 'Error loading logs: ' + e.message;
             }
         }
 
-        function toggleSSH() {
+        // ========================================
+        // SSH TOGGLE
+        // ========================================
+        async function toggleSSH() {
+            if (!adminToken) { showAlert('Auth Required', 'Please authenticate first', 'lock'); return; }
             const toggle = document.getElementById('ssh-toggle');
-            toggle.classList.toggle('active');
+            const isActive = toggle.classList.contains('active');
+            const newState = !isActive;
+
+            try {
+                const res = await fetch('/api/admin/ssh', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Admin-Token': adminToken
+                    },
+                    body: JSON.stringify({ enabled: newState })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toggle.classList.toggle('active');
+                    document.getElementById('ssh-label').textContent = newState ? 'Enabled' : 'Disabled';
+                } else {
+                    showAlert('Error', data.error || 'Failed to toggle SSH', 'error');
+                }
+            } catch (e) {
+                showAlert('Error', 'Error: ' + e.message, 'error');
+            }
         }
 
         function applyOrientation() {
@@ -768,17 +975,17 @@
         function changePassword() {
             const pass = document.getElementById('admin-password').value;
             const confirm = document.getElementById('admin-password-confirm').value;
-            if (pass !== confirm) { alert('Passwords do not match'); return; }
-            if (pass.length < 8) { alert('Password must be at least 8 characters'); return; }
-            alert('Password change not yet implemented');
+            if (pass !== confirm) { showAlert('Mismatch', 'Passwords do not match', 'error'); return; }
+            if (pass.length < 8) { showAlert('Too Short', 'Password must be at least 8 characters', 'error'); return; }
+            showAlert('Not Implemented', 'Password change not yet implemented', 'info');
         }
 
         function unpairDevice() {
             localStorage.removeItem('ods_device_uuid');
             localStorage.removeItem('ods_cpu_serial');
             localStorage.removeItem('ods_pairing_rate_limit');
-            alert('Device unpaired. Reloading...');
-            window.location.href = '/player_link.html';
+            showAlert('Unpaired', 'Device unpaired. Reloading...', 'link_off');
+            setTimeout(() => { window.location.href = '/player_link.html'; }, 2000);
         }
 
         // Volume slider
@@ -794,7 +1001,7 @@
         updateClock();
 
         // ========================================
-        // ADMIN AUTH (Upgrade C)
+        // ADMIN AUTH
         // ========================================
         let adminToken = sessionStorage.getItem('ods_admin_token') || null;
 
@@ -855,7 +1062,7 @@
         }
 
         async function adminAction(action) {
-            if (!adminToken) { alert('Please authenticate first'); return; }
+            if (!adminToken) { showAlert('Auth Required', 'Please authenticate first', 'lock'); return; }
             try {
                 const res = await fetch(`/api/admin/${action}`, {
                     method: 'POST',
@@ -866,7 +1073,7 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert(data.message || `${action} successful`);
+                    showAlert('Success', data.message || `${action} successful`, 'check_circle');
                 } else {
                     if (res.status === 401) {
                         adminToken = null;
@@ -874,21 +1081,19 @@
                         document.getElementById('admin-login-card').classList.remove('hidden');
                         document.getElementById('admin-tools').classList.add('hidden');
                         document.getElementById('admin-nav-icon').textContent = 'lock';
-                        alert('Session expired. Please re-authenticate.');
+                        showAlert('Session Expired', 'Please re-authenticate.', 'lock');
                     } else {
-                        alert(data.error || `${action} failed`);
+                        showAlert('Error', data.error || `${action} failed`, 'error');
                     }
                 }
             } catch (e) {
-                alert('Error: ' + e.message);
+                showAlert('Error', 'Error: ' + e.message, 'error');
             }
         }
 
         async function adminViewServices() {
-            if (!adminToken) { alert('Please authenticate first'); return; }
-            const output = document.getElementById('admin-services-output');
+            if (!adminToken) { showAlert('Auth Required', 'Please authenticate first', 'lock'); return; }
             const log = document.getElementById('admin-services-log');
-            output.classList.remove('hidden');
             log.textContent = 'Loading service status...';
             try {
                 const res = await fetch('/api/admin/services', {
@@ -907,7 +1112,6 @@
         window.addEventListener('load', function () {
             refreshNetworkStatus();
             refreshSystemInfo();
-            loadLogs();
         });
 
         // Auto-refresh system info every 10s
