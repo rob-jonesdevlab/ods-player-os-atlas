@@ -63,7 +63,8 @@ sleep 5
 plymouth quit --retain-splash 2>/dev/null || true
 log "Plymouth quit (held 5s)"
 
-# ── STAGE 3: FBI BRIDGE ANIMATION ────────────────────────────────────
+# ── STAGE 3: FBI BRIDGE ANIMATION ("Connecting to server") ───────────
+FBI_START=$SECONDS
 STOP_FBI="/tmp/ods-stop-enroll-fbi"
 rm -f "$STOP_FBI"
 (
@@ -92,6 +93,15 @@ while ! ping -c1 -W1 8.8.8.8 >/dev/null 2>&1; do
     fi
 done
 [ $NET_ELAPSED -lt $NET_TIMEOUT ] && log "Network ready (${NET_ELAPSED}s)"
+
+# Ensure "Connecting to server" message displays for at least 8 seconds
+FBI_MIN_DISPLAY=8
+FBI_ELAPSED=$((SECONDS - FBI_START))
+if [ $FBI_ELAPSED -lt $FBI_MIN_DISPLAY ]; then
+    WAIT_TIME=$((FBI_MIN_DISPLAY - FBI_ELAPSED))
+    log "Holding server message for ${WAIT_TIME}s more (minimum ${FBI_MIN_DISPLAY}s)"
+    sleep $WAIT_TIME
+fi
 
 # ── STAGE 5: READ ATTEMPT COUNTER ────────────────────────────────────
 mkdir -p /etc/ods

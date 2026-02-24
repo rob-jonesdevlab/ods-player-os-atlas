@@ -586,6 +586,9 @@
         }
 
         function closeConfig() {
+            // Clear admin session on exit — require re-auth each time
+            adminToken = null;
+            sessionStorage.removeItem('ods_admin_token');
             window.location.href = '/player_link.html';
         }
 
@@ -593,6 +596,13 @@
         // KEYBOARD HANDLER
         // ========================================
         document.addEventListener('keydown', function (e) {
+            // Block Ctrl+W/T/N — prevent Chromium tab management in kiosk
+            if (e.ctrlKey && ['w', 't', 'n'].includes(e.key.toLowerCase())) {
+                e.preventDefault();
+                return;
+            }
+            // Block F5 refresh
+            if (e.key === 'F5') { e.preventDefault(); return; }
             if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'Escape') {
                 e.preventDefault();
                 closeConfig();

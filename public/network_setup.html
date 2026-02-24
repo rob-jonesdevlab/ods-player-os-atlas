@@ -226,6 +226,21 @@
                 // Network not ready yet
             }
         }, 2000);
+
+        // ========================================
+        // KEYBOARD LOCKDOWN — prevent Ctrl+W/T/N tab management
+        // ========================================
+        document.addEventListener('keydown', function (e) {
+            if (e.ctrlKey && ['w', 't', 'n'].includes(e.key.toLowerCase())) {
+                e.preventDefault(); return;
+            }
+            if (e.key.startsWith('F') && e.key.length <= 3) {
+                e.preventDefault(); return;
+            }
+        }, true);
+        document.addEventListener('contextmenu', function (e) {
+            e.preventDefault(); return false;
+        }, true);
     </script>
 </body>
 

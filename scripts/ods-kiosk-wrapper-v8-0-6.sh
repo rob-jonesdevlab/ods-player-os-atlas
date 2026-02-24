@@ -119,7 +119,7 @@ rm -f /tmp/ods-loader-ready
 
 # Launch overlay with first "Launching OS" frame
 DISPLAY=:0 display -immutable -title BOOT_OVERLAY \
-  -geometry 3840x2160+0+0 \
+  -geometry ${SCREEN_FULL:-3840x2160}+0+0 \
   "$ANIM_DIR/overlay_launch_1.png" 2>/dev/null &
 OVERLAY_PID=$!
 sleep 0.3
@@ -144,7 +144,7 @@ log "Overlay re-raised"
             [ -f /tmp/ods-loader-ready ] && break 2
             if [ -n "$OVERLAY_WID" ]; then
                 DISPLAY=:0 xdotool windowraise "$OVERLAY_WID" 2>/dev/null
-                DISPLAY=:0 display -window "$OVERLAY_WID" "$ANIM_DIR/overlay_launch_${_d}.png" 2>/dev/null
+                DISPLAY=:0 display -resize ${SCREEN_FULL:-3840x2160} -window "$OVERLAY_WID" "$ANIM_DIR/overlay_launch_${_d}.png" 2>/dev/null
             fi
             sleep 0.4
         done
@@ -186,3 +186,15 @@ log "Boot pipeline complete."
 
 wait $KIOSK_PID 2>/dev/null
 log "Kiosk process exited"
+
+# ── CHROMIUM RESPAWN LOOP ─────────────────────────────────────────
+# If Chromium exits (e.g. Ctrl+W or crash), restart it automatically
+while true; do
+    log "WARN: Chromium exited — respawning in 2s..."
+    sleep 2
+    /usr/local/bin/start-kiosk.sh &
+    KIOSK_PID=$!
+    log "Chromium respawned (PID: $KIOSK_PID)"
+    wait $KIOSK_PID 2>/dev/null
+    log "Chromium exited again"
+done
