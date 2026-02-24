@@ -23,9 +23,7 @@
                         "surface-light": "#334155",
                         "surface-border": "#475569",
                     },
-                    fontFamily: {
-                        "display": ["Inter", "sans-serif"],
-                    },
+                    fontFamily: { "display": ["Inter", "sans-serif"] },
                 },
             },
         }
@@ -81,7 +79,6 @@
             font-variant-numeric: tabular-nums;
         }
 
-        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -114,16 +111,14 @@
             transition: transform 0.2s;
         }
 
-        .modal-overlay.visible .modal-box {
-            transform: scale(1);
-        }
-
-        /* WiFi scan modal — wider */
         .modal-box.wide {
             max-width: 520px;
         }
 
-        /* Log tabs */
+        .modal-overlay.visible .modal-box {
+            transform: scale(1);
+        }
+
         .log-tab {
             padding: 8px 16px;
             border-radius: 8px;
@@ -147,7 +142,6 @@
             color: #e2e8f0;
         }
 
-        /* WiFi network list items */
         .wifi-network-item {
             padding: 10px 14px;
             border-radius: 8px;
@@ -161,6 +155,13 @@
         .wifi-network-item:hover {
             background: rgba(60, 131, 246, 0.15);
         }
+
+        .iface-card {
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(71, 85, 105, 0.4);
+            border-radius: 10px;
+            padding: 12px 16px;
+        }
     </style>
 </head>
 
@@ -173,14 +174,13 @@
                 <span id="modal-icon" class="material-symbols-outlined text-2xl text-primary"></span>
                 <h3 id="modal-title" class="text-lg font-semibold"></h3>
             </div>
-            <div id="modal-body">
-                <p id="modal-message" class="text-sm text-slate-300 mb-6"></p>
-            </div>
+            <p id="modal-message" class="text-sm text-slate-300 mb-6"></p>
+            <div id="modal-custom-body"></div>
             <div id="modal-actions" class="flex gap-3 justify-end"></div>
         </div>
     </div>
 
-    <!-- Sidebar Navigation -->
+    <!-- Sidebar -->
     <nav class="w-64 bg-slate-800/90 border-r border-slate-700 flex flex-col h-screen flex-shrink-0">
         <div class="px-5 py-6 border-b border-slate-700">
             <div class="flex items-center gap-3">
@@ -193,7 +193,6 @@
                 </div>
             </div>
         </div>
-
         <div class="flex-1 py-3 overflow-y-auto">
             <div class="px-3 space-y-0.5">
                 <button onclick="showSection('network')" id="nav-network"
@@ -241,7 +240,6 @@
                 </button>
             </div>
         </div>
-
         <div class="px-3 py-4 border-t border-slate-700">
             <button onclick="closeConfig()"
                 class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors">
@@ -251,7 +249,7 @@
         </div>
     </nav>
 
-    <!-- Main Content Area -->
+    <!-- Main Content -->
     <main class="flex-1 overflow-y-auto p-8">
 
         <!-- ==================== NETWORK ==================== -->
@@ -261,14 +259,7 @@
                 Network Configuration
             </h2>
             <div class="config-card rounded-xl p-6 mb-4">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold">WiFi Configuration</h3>
-                    <button onclick="scanWiFi()"
-                        class="flex items-center gap-1.5 px-4 py-2 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors">
-                        <span class="material-symbols-outlined text-lg">radar</span>
-                        Scan
-                    </button>
-                </div>
+                <h3 class="text-lg font-semibold mb-4">WiFi Configuration</h3>
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-400 mb-1.5">SSID (Network Name)</label>
@@ -281,11 +272,17 @@
                             class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm" />
                     </div>
                 </div>
-                <button onclick="connectWifi()"
-                    class="px-6 py-2.5 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
-                    <span class="material-symbols-outlined text-lg">wifi</span>
-                    Connect
-                </button>
+                <div class="flex gap-3">
+                    <button onclick="scanWiFi()"
+                        class="px-6 py-2.5 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
+                        <span class="material-symbols-outlined text-lg">wifi</span>
+                        Scan
+                    </button>
+                    <button onclick="connectWifi()"
+                        class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors">
+                        Connect
+                    </button>
+                </div>
                 <div id="wifi-status" class="mt-3 text-sm text-slate-400 hidden"></div>
             </div>
             <div class="config-card rounded-xl p-6">
@@ -329,10 +326,10 @@
                         <label class="block text-sm font-medium text-slate-400 mb-1.5">Resolution</label>
                         <select id="display-resolution"
                             class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-primary outline-none text-sm">
-                            <option value="1920x1080">HD (1920×1080)</option>
-                            <option value="2560x1440">2K (2560×1440)</option>
-                            <option value="3840x2160">4K (3840×2160)</option>
+                            <option value="">Loading available modes...</option>
                         </select>
+                        <p class="text-xs text-slate-500 mt-1">Only modes supported by the connected display are shown.
+                        </p>
                     </div>
                     <button onclick="applyResolution()"
                         class="px-6 py-2.5 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
@@ -426,7 +423,7 @@
                     </div>
                     <div>
                         <span class="text-sm text-slate-400">Player Version</span>
-                        <p id="player-version" class="text-sm font-medium stat-value mt-1">v8-3-0</p>
+                        <p id="player-version" class="text-sm font-medium stat-value mt-1">v8-3-1</p>
                     </div>
                 </div>
             </div>
@@ -488,7 +485,7 @@
                         </div>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">Storage</span>
+                        <span class="text-sm text-slate-400">Storage (Root / Disk)</span>
                         <p id="sys-storage" class="text-lg font-semibold stat-value">—</p>
                         <div class="w-full bg-slate-700 rounded-full h-2 mt-1.5">
                             <div id="sys-storage-bar" class="bg-emerald-500 h-2 rounded-full" style="width: 0%"></div>
@@ -502,7 +499,9 @@
             </div>
             <div class="config-card rounded-xl p-6">
                 <h3 class="text-lg font-semibold mb-4">Network Interfaces</h3>
-                <div id="sys-network-interfaces" class="text-sm text-slate-300 font-mono space-y-1">Loading...</div>
+                <div id="sys-network-interfaces" class="space-y-3">
+                    <p class="text-sm text-slate-400">Loading...</p>
+                </div>
             </div>
         </section>
 
@@ -543,8 +542,6 @@
                 <span class="material-symbols-outlined text-primary">admin_panel_settings</span>
                 Admin Panel
             </h2>
-
-            <!-- Login Form -->
             <div id="admin-login-card" class="config-card rounded-xl p-6 mb-4">
                 <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                     <span class="material-symbols-outlined text-amber-400">lock</span>
@@ -571,55 +568,21 @@
                 <div id="admin-login-status" class="mt-3 text-sm hidden"></div>
             </div>
 
-            <!-- Admin Tools (hidden until authenticated) -->
             <div id="admin-tools" class="hidden">
-                <div class="config-card rounded-xl p-6 mb-4">
+                <div class="config-card rounded-xl p-6">
                     <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                         <span class="material-symbols-outlined text-emerald-400">lock_open</span>
                         Admin Tools
                         <span class="text-xs text-slate-500 ml-auto">Session active</span>
                     </h3>
                     <div class="grid grid-cols-2 gap-4">
-                        <!-- Launch Terminal -->
+                        <!-- Row 1: Launch Terminal | SSH Access -->
                         <button onclick="adminAction('terminal')"
                             class="config-card rounded-xl p-5 hover:border-emerald-500/50 transition-colors cursor-pointer text-left">
                             <span class="material-symbols-outlined text-2xl text-emerald-400 mb-2">terminal</span>
                             <h4 class="font-semibold mb-1">Launch Terminal</h4>
                             <p class="text-xs text-slate-400">Open admin terminal overlay</p>
                         </button>
-                        <!-- Restart Services -->
-                        <button onclick="adminAction('restart-services')"
-                            class="config-card rounded-xl p-5 hover:border-amber-500/50 transition-colors cursor-pointer text-left">
-                            <span class="material-symbols-outlined text-2xl text-amber-400 mb-2">refresh</span>
-                            <h4 class="font-semibold mb-1">Restart Services</h4>
-                            <p class="text-xs text-slate-400">Restart all ODS services</p>
-                        </button>
-                        <!-- Clear Cache -->
-                        <button
-                            onclick="confirmAction('Clear Cache', 'Browser cache will be cleared. Restart needed.', 'delete_sweep', () => systemAction('cache-clear'))"
-                            class="config-card rounded-xl p-5 hover:border-blue-500/50 transition-colors cursor-pointer text-left">
-                            <span class="material-symbols-outlined text-2xl text-blue-400 mb-2">delete_sweep</span>
-                            <h4 class="font-semibold mb-1">Clear Cache</h4>
-                            <p class="text-xs text-slate-400">Clear browser cache and data</p>
-                        </button>
-                        <!-- Factory Reset -->
-                        <button
-                            onclick="confirmAction('Factory Reset', 'This will erase all data and reset to factory defaults. Cannot be undone!', 'settings_backup_restore', () => systemAction('factory-reset'))"
-                            class="config-card rounded-xl p-5 hover:border-red-500/50 transition-colors cursor-pointer text-left">
-                            <span
-                                class="material-symbols-outlined text-2xl text-red-400 mb-2">settings_backup_restore</span>
-                            <h4 class="font-semibold mb-1">Factory Reset</h4>
-                            <p class="text-xs text-slate-400">Reset to factory defaults</p>
-                        </button>
-                        <!-- Shutdown -->
-                        <button
-                            onclick="confirmAction('Shutdown', 'The player will power off completely.', 'power_settings_new', () => systemAction('shutdown'))"
-                            class="config-card rounded-xl p-5 hover:border-red-500/50 transition-colors cursor-pointer text-left">
-                            <span class="material-symbols-outlined text-2xl text-red-400 mb-2">power_settings_new</span>
-                            <h4 class="font-semibold mb-1">Shutdown</h4>
-                            <p class="text-xs text-slate-400">Power off the player</p>
-                        </button>
-                        <!-- SSH Access -->
                         <div class="config-card rounded-xl p-5">
                             <span class="material-symbols-outlined text-2xl text-cyan-400 mb-2">lan</span>
                             <h4 class="font-semibold mb-1">SSH Access</h4>
@@ -629,19 +592,48 @@
                                 <span id="ssh-label" class="text-xs text-slate-400">Enabled</span>
                             </div>
                         </div>
-                        <!-- Update Password -->
-                        <button onclick="showPasswordModal()"
-                            class="config-card rounded-xl p-5 hover:border-purple-500/50 transition-colors cursor-pointer text-left">
-                            <span class="material-symbols-outlined text-2xl text-purple-400 mb-2">password</span>
-                            <h4 class="font-semibold mb-1">Update Password</h4>
-                            <p class="text-xs text-slate-400">Change admin password</p>
+                        <!-- Row 2: Clear Cache | Restart Services -->
+                        <button
+                            onclick="confirmAction('Clear Cache', 'Browser cache will be cleared. Restart needed.', 'delete_sweep', () => systemAction('cache-clear'))"
+                            class="config-card rounded-xl p-5 hover:border-blue-500/50 transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-2xl text-blue-400 mb-2">delete_sweep</span>
+                            <h4 class="font-semibold mb-1">Clear Cache</h4>
+                            <p class="text-xs text-slate-400">Clear browser cache and data</p>
                         </button>
-                        <!-- Log Out -->
+                        <button onclick="adminAction('restart-services')"
+                            class="config-card rounded-xl p-5 hover:border-amber-500/50 transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-2xl text-amber-400 mb-2">refresh</span>
+                            <h4 class="font-semibold mb-1">Restart Services</h4>
+                            <p class="text-xs text-slate-400">Restart all ODS services</p>
+                        </button>
+                        <!-- Row 3: Shutdown | Factory Reset -->
+                        <button
+                            onclick="confirmAction('Shutdown', 'The player will power off completely.', 'power_settings_new', () => systemAction('shutdown'))"
+                            class="config-card rounded-xl p-5 hover:border-red-500/50 transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-2xl text-red-400 mb-2">power_settings_new</span>
+                            <h4 class="font-semibold mb-1">Shutdown</h4>
+                            <p class="text-xs text-slate-400">Power off the player</p>
+                        </button>
+                        <button
+                            onclick="confirmAction('Factory Reset', 'This will erase all data and reset to factory defaults. Cannot be undone!', 'settings_backup_restore', () => systemAction('factory-reset'))"
+                            class="config-card rounded-xl p-5 hover:border-red-500/50 transition-colors cursor-pointer text-left">
+                            <span
+                                class="material-symbols-outlined text-2xl text-red-400 mb-2">settings_backup_restore</span>
+                            <h4 class="font-semibold mb-1">Factory Reset</h4>
+                            <p class="text-xs text-slate-400">Reset to factory defaults</p>
+                        </button>
+                        <!-- Row 4: Log Out | Update Password -->
                         <button onclick="adminLogout()"
                             class="config-card rounded-xl p-5 hover:border-slate-500/50 transition-colors cursor-pointer text-left">
                             <span class="material-symbols-outlined text-2xl text-slate-400 mb-2">logout</span>
                             <h4 class="font-semibold mb-1">Log Out</h4>
                             <p class="text-xs text-slate-400">End admin session</p>
+                        </button>
+                        <button onclick="showPasswordModal()"
+                            class="config-card rounded-xl p-5 hover:border-purple-500/50 transition-colors cursor-pointer text-left">
+                            <span class="material-symbols-outlined text-2xl text-purple-400 mb-2">password</span>
+                            <h4 class="font-semibold mb-1">Update Password</h4>
+                            <p class="text-xs text-slate-400">Change admin password</p>
                         </button>
                     </div>
                 </div>
@@ -677,31 +669,33 @@
             if (e.key === 'Escape') {
                 const modal = document.getElementById('modal-overlay');
                 if (modal.style.display !== 'none') { hideModal(); } else { closeConfig(); }
-                e.preventDefault();
-                return;
+                e.preventDefault(); return;
             }
         }, true);
         document.addEventListener('contextmenu', e => { e.preventDefault(); return false; }, true);
 
         // ========================================
-        // CUSTOM MODAL SYSTEM
+        // MODAL SYSTEM (fixed — separate custom body div)
         // ========================================
-        function showModal(title, message, icon, actions, bodyHtml) {
+        function showModal(title, message, icon, actions, customBodyHtml) {
             const overlay = document.getElementById('modal-overlay');
+            const box = document.getElementById('modal-box');
             document.getElementById('modal-title').textContent = title;
             document.getElementById('modal-icon').textContent = icon;
-
-            const bodyDiv = document.getElementById('modal-body');
             const msgEl = document.getElementById('modal-message');
-            if (bodyHtml) {
+            const customEl = document.getElementById('modal-custom-body');
+
+            if (customBodyHtml) {
                 msgEl.style.display = 'none';
-                bodyDiv.innerHTML = bodyHtml;
+                customEl.innerHTML = customBodyHtml;
+                customEl.style.display = '';
+                box.className = 'modal-box wide';
             } else {
-                msgEl.style.display = '';
                 msgEl.textContent = message;
-                // Clear any previous custom body content (keep modal-message)
-                const children = Array.from(bodyDiv.children);
-                children.forEach(c => { if (c.id !== 'modal-message') c.remove(); });
+                msgEl.style.display = '';
+                customEl.innerHTML = '';
+                customEl.style.display = 'none';
+                box.className = 'modal-box';
             }
 
             const actionsDiv = document.getElementById('modal-actions');
@@ -718,9 +712,6 @@
                 actionsDiv.appendChild(btn);
             });
 
-            const box = document.getElementById('modal-box');
-            box.className = bodyHtml ? 'modal-box wide' : 'modal-box';
-
             overlay.style.display = 'flex';
             requestAnimationFrame(() => overlay.classList.add('visible'));
         }
@@ -730,28 +721,16 @@
             overlay.classList.remove('visible');
             setTimeout(() => {
                 overlay.style.display = 'none';
-                // Restore modal-message visibility
-                const msgEl = document.getElementById('modal-message');
-                if (msgEl) msgEl.style.display = '';
-                // Clear custom body
-                const bodyDiv = document.getElementById('modal-body');
-                const children = Array.from(bodyDiv.children);
-                children.forEach(c => { if (c.id !== 'modal-message') c.remove(); });
+                document.getElementById('modal-message').style.display = '';
+                const c = document.getElementById('modal-custom-body');
+                c.innerHTML = '';
+                c.style.display = 'none';
             }, 200);
         }
 
         function closeModal(event) { if (event.target === event.currentTarget) hideModal(); }
-
-        function showAlert(title, message, icon = 'info') {
-            showModal(title, message, icon, [{ label: 'OK', primary: true }]);
-        }
-
-        function confirmAction(title, message, icon, onConfirm) {
-            showModal(title, message, icon, [
-                { label: 'Cancel' },
-                { label: 'Confirm', danger: true, action: onConfirm }
-            ]);
-        }
+        function showAlert(title, message, icon = 'info') { showModal(title, message, icon, [{ label: 'OK', primary: true }]); }
+        function confirmAction(title, message, icon, onConfirm) { showModal(title, message, icon, [{ label: 'Cancel' }, { label: 'Confirm', danger: true, action: onConfirm }]); }
 
         // ========================================
         // WIFI
@@ -770,30 +749,31 @@
         }
 
         async function scanWiFi() {
-            const bodyHtml = `
-                <div id="wifi-scan-list" class="max-h-64 overflow-y-auto space-y-1">
-                    <div class="flex items-center justify-center py-8 text-slate-400">
-                        <span class="material-symbols-outlined animate-spin mr-2 text-lg">radar</span>
-                        <span class="text-sm">Scanning for networks...</span>
-                    </div>
-                </div>`;
+            const bodyHtml = `<div id="wifi-scan-list" class="max-h-64 overflow-y-auto space-y-1 mb-4">
+                <div class="flex items-center justify-center py-8 text-slate-400">
+                    <span class="material-symbols-outlined animate-spin mr-2 text-lg">radar</span>
+                    <span class="text-sm">Scanning for networks...</span>
+                </div>
+            </div>`;
             showModal('Available Networks', '', 'wifi_find', [{ label: 'Cancel' }], bodyHtml);
 
             try {
                 const res = await fetch('/api/wifi/scan');
                 const data = await res.json();
                 const list = document.getElementById('wifi-scan-list');
+                if (!list) return;
                 if (!data.networks || data.networks.length === 0) {
-                    list.innerHTML = '<p class="text-sm text-slate-400 py-4 text-center">No networks found</p>';
+                    list.innerHTML = '<p class="text-sm text-slate-400 py-4 text-center">No networks found. Make sure WiFi is available.</p>';
                     return;
                 }
                 list.innerHTML = data.networks.map(n => {
                     const bars = n.signal > -50 ? 3 : n.signal > -70 ? 2 : 1;
                     const icon = bars >= 3 ? 'signal_wifi_4_bar' : bars >= 2 ? 'network_wifi_3_bar' : 'network_wifi_1_bar';
-                    return `<div class="wifi-network-item" onclick="selectWiFi('${n.ssid.replace(/'/g, "\\'")}')">
+                    const escapedSsid = n.ssid.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    return `<div class="wifi-network-item" onclick="selectWiFi('${escapedSsid}')">
                         <span class="material-symbols-outlined text-lg text-primary">${icon}</span>
                         <span class="text-sm font-medium flex-1">${n.ssid}</span>
-                        <span class="text-xs text-slate-500">${n.signal} dBm</span>
+                        <span class="text-xs text-slate-500">${n.signal}${typeof n.signal === 'number' && n.signal < 0 ? ' dBm' : '%'}</span>
                     </div>`;
                 }).join('');
             } catch (e) {
@@ -832,22 +812,95 @@
                 document.getElementById('sys-cpu-temp').textContent = data.cpu_temp || '—';
                 document.getElementById('sys-uptime').textContent = data.uptime || '—';
                 document.getElementById('sys-ram').textContent = data.ram_usage || '—';
-                document.getElementById('sys-storage').textContent = data.storage_usage || '—';
+                document.getElementById('sys-storage').textContent = (data.storage_usage || '—') + (data.disk_total ? ` of ${data.disk_total} disk` : '');
                 document.getElementById('sys-os').textContent = data.os_version || '—';
                 document.getElementById('ip-address').textContent = data.ip_address || '—';
                 document.getElementById('dns-info').textContent = data.dns || '—';
                 if (data.ram_percent) document.getElementById('sys-ram-bar').style.width = data.ram_percent + '%';
                 if (data.storage_percent) document.getElementById('sys-storage-bar').style.width = data.storage_percent + '%';
-                if (data.interfaces) document.getElementById('sys-network-interfaces').textContent = data.interfaces;
+
+                // Enhanced network interfaces display
+                if (data.interfaces) {
+                    const container = document.getElementById('sys-network-interfaces');
+                    const lines = data.interfaces.trim().split('\n').filter(l => l.trim());
+                    if (lines.length === 0) {
+                        container.innerHTML = '<p class="text-sm text-slate-400">No interfaces detected</p>';
+                    } else {
+                        container.innerHTML = lines.map(line => {
+                            const parts = line.trim().split(/\s+/);
+                            const name = parts[0] || '—';
+                            const type = parts[1] || '';
+                            const addr = parts[2] || '—';
+                            const isIPv4 = type.includes('inet') && !type.includes('inet6');
+                            const isIPv6 = type.includes('inet6');
+                            const iconName = name.startsWith('eth') || name.startsWith('end') ? 'settings_ethernet' :
+                                name.startsWith('wlan') || name.startsWith('wlp') ? 'wifi' : 'dns';
+                            const typeLabel = isIPv6 ? 'IPv6' : 'IPv4';
+                            const color = isIPv4 ? 'text-emerald-400' : 'text-blue-400';
+                            return `<div class="iface-card flex items-center gap-4">
+                                <span class="material-symbols-outlined text-xl ${color}">${iconName}</span>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-semibold text-white">${name}</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-600 text-slate-300">${typeLabel}</span>
+                                    </div>
+                                    <span class="text-xs text-slate-400 font-mono">${addr}</span>
+                                </div>
+                            </div>`;
+                        }).join('');
+                    }
+                }
+
+                // Display resolution dropdown sync
                 if (data.display_resolution) {
-                    // Set dropdown to match detected resolution
                     const select = document.getElementById('display-resolution');
                     for (const opt of select.options) {
                         if (opt.value === data.display_resolution) { opt.selected = true; break; }
                     }
                 }
+
                 document.getElementById('player-uuid').textContent = localStorage.getItem('ods_device_uuid') || 'Not generated';
             } catch (e) { console.error('System info error:', e); }
+        }
+
+        // ========================================
+        // DISPLAY — RESOLUTION
+        // ========================================
+        async function applyResolution() {
+            const resolution = document.getElementById('display-resolution').value;
+            if (!resolution) { showAlert('No Mode', 'Select a resolution first', 'error'); return; }
+            confirmAction('Change Resolution', `Set resolution to ${resolution}? The display will change and services should be restarted for proper scaling.`, 'monitor', async () => {
+                try {
+                    const res = await fetch('/api/system/resolution', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ resolution })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showAlert('Resolution Applied', data.message, 'check_circle');
+                    } else {
+                        showAlert('Error', data.error || 'Failed to change resolution', 'error');
+                    }
+                } catch (e) { showAlert('Error', e.message, 'error'); }
+            });
+        }
+
+        async function loadDisplayModes() {
+            try {
+                const res = await fetch('/api/display/modes');
+                const data = await res.json();
+                const select = document.getElementById('display-resolution');
+                const labels = { '3840x2160': '4K', '2560x1440': '2K', '1920x1080': 'HD', '1680x1050': 'WSXGA+', '1440x900': 'WXGA+', '1280x1024': 'SXGA', '1280x720': '720p' };
+                if (data.modes && data.modes.length > 0) {
+                    select.innerHTML = data.modes.map(m => {
+                        const label = labels[m] ? `${labels[m]} (${m.replace('x', '×')})` : m.replace('x', '×');
+                        return `<option value="${m}">${label}</option>`;
+                    }).join('');
+                } else {
+                    select.innerHTML = '<option value="">No modes detected</option>';
+                }
+            } catch (e) { console.error('Failed to load display modes:', e); }
         }
 
         // ========================================
@@ -857,35 +910,24 @@
             try {
                 const res = await fetch(`/api/system/${action}`, { method: 'POST' });
                 const data = await res.json();
-                showAlert(data.success ? 'Success' : 'Error', data.message || data.error || `${action} ${data.success ? 'initiated' : 'failed'}`, data.success ? 'check_circle' : 'error');
+                showAlert(data.success ? 'Success' : 'Error', data.message || data.error || action, data.success ? 'check_circle' : 'error');
             } catch (e) { showAlert('Error', e.message, 'error'); }
-        }
-
-        function applyResolution() {
-            const res = document.getElementById('display-resolution').value;
-            showAlert('Resolution', `Resolution set to ${res}. Changes will apply after reboot.`, 'monitor');
         }
 
         // ========================================
         // TIMEZONE
         // ========================================
         let selectedTimezone = 'America/Los_Angeles';
-
         function updateClock() {
-            try {
-                const now = new Date();
-                document.getElementById('time-current').textContent = now.toLocaleString('en-US', { timeZone: selectedTimezone });
-            } catch (e) {
-                document.getElementById('time-current').textContent = new Date().toLocaleString();
-            }
+            try { document.getElementById('time-current').textContent = new Date().toLocaleString('en-US', { timeZone: selectedTimezone }); }
+            catch (e) { document.getElementById('time-current').textContent = new Date().toLocaleString(); }
         }
-        setInterval(updateClock, 1000);
-        updateClock();
+        setInterval(updateClock, 1000); updateClock();
 
         function updateTimezone() {
             selectedTimezone = document.getElementById('time-timezone').value;
             updateClock();
-            showAlert('Timezone Updated', `Timezone set to ${selectedTimezone}. Clock updated.`, 'schedule');
+            showAlert('Timezone Updated', `Timezone set to ${selectedTimezone}.`, 'schedule');
         }
 
         // ========================================
@@ -897,8 +939,7 @@
         async function loadTypedLogs(type) {
             currentLogType = type;
             document.querySelectorAll('.log-tab').forEach(t => t.classList.remove('active'));
-            const tab = document.getElementById(`log-tab-${type}`);
-            if (tab) tab.classList.add('active');
+            const tab = document.getElementById(`log-tab-${type}`); if (tab) tab.classList.add('active');
             document.getElementById('log-type-label').textContent = logTypeLabels[type] || type;
             document.getElementById('log-viewer').textContent = 'Loading...';
             document.getElementById('log-line-count').textContent = '';
@@ -988,28 +1029,27 @@
         }
 
         function showPasswordModal() {
-            const bodyHtml = `
-                <div class="space-y-3 mb-6">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">New Password</label>
-                        <input id="modal-new-pass" type="password" placeholder="Enter new password"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 outline-none text-sm" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Confirm Password</label>
-                        <input id="modal-confirm-pass" type="password" placeholder="Confirm password"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 outline-none text-sm" />
-                    </div>
-                </div>`;
+            const bodyHtml = `<div class="space-y-3 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1.5">New Password</label>
+                    <input id="modal-new-pass" type="password" placeholder="Enter new password"
+                        class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 outline-none text-sm" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-400 mb-1.5">Confirm Password</label>
+                    <input id="modal-confirm-pass" type="password" placeholder="Confirm password"
+                        class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 outline-none text-sm" />
+                </div>
+            </div>`;
             showModal('Update Admin Password', '', 'password', [
                 { label: 'Cancel' },
                 {
                     label: 'Update', primary: true, action: () => {
                         const pass = document.getElementById('modal-new-pass')?.value;
                         const confirm = document.getElementById('modal-confirm-pass')?.value;
-                        if (!pass || pass.length < 8) { showAlert('Too Short', 'Password must be at least 8 characters', 'error'); return; }
-                        if (pass !== confirm) { showAlert('Mismatch', 'Passwords do not match', 'error'); return; }
-                        showAlert('Not Implemented', 'Password change will be available in v9', 'info');
+                        if (!pass || pass.length < 8) { setTimeout(() => showAlert('Too Short', 'Password must be at least 8 characters', 'error'), 250); return; }
+                        if (pass !== confirm) { setTimeout(() => showAlert('Mismatch', 'Passwords do not match', 'error'), 250); return; }
+                        setTimeout(() => showAlert('Not Implemented', 'Password change will be available in v9', 'info'), 250);
                     }
                 }
             ], bodyHtml);
@@ -1031,7 +1071,7 @@
         // ========================================
         // INITIAL LOAD
         // ========================================
-        window.addEventListener('load', function () { refreshNetworkStatus(); refreshSystemInfo(); });
+        window.addEventListener('load', function () { refreshNetworkStatus(); refreshSystemInfo(); loadDisplayModes(); });
         setInterval(function () { refreshNetworkStatus(); refreshSystemInfo(); }, 10000);
     </script>
 </body>

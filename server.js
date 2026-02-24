@@ -35,35 +35,34 @@ app.get('/api/status', (req, res) => {
 
 // Scan for available WiFi networks
 app.get('/api/wifi/scan', (req, res) => {
-    exec('iwlist wlan0 scan 2>/dev/null | grep -E "ESSID|Signal level" | paste - - | sort -t= -k3 -rn', { timeout: 15000 }, (error, stdout) => {
-        if (error) {
-            // Fallback: try nmcli
-            exec('nmcli -t -f SSID,SIGNAL device wifi list 2>/dev/null', { timeout: 10000 }, (err2, stdout2) => {
-                if (err2 || !stdout2.trim()) {
-                    return res.json({ networks: [], error: 'WiFi scan unavailable' });
-                }
-                const networks = stdout2.trim().split('\n')
-                    .map(line => { const [ssid, signal] = line.split(':'); return { ssid, signal: parseInt(signal) || 0 }; })
-                    .filter(n => n.ssid && n.ssid.length > 0);
-                res.json({ networks });
-            });
-            return;
-        }
+    // Bring wlan0 up first (Pi 5 boots with it DOWN), then scan with iw
+    exec('ip link set wlan0 up 2>/dev/null; sleep 1; iw dev wlan0 scan 2>/dev/null | grep -E "SSID:|signal:" | paste - - 2>/dev/null', { timeout: 20000 }, (error, stdout) => {
         const networks = [];
-        const lines = stdout.trim().split('\n');
-        lines.forEach(line => {
-            const ssidMatch = line.match(/ESSID:"(.+?)"/);
-            const signalMatch = line.match(/Signal level[=:](-?\d+)/);
-            if (ssidMatch && ssidMatch[1]) {
-                networks.push({
-                    ssid: ssidMatch[1],
-                    signal: signalMatch ? parseInt(signalMatch[1]) : 0
-                });
-            }
-        });
-        // Deduplicate by SSID
+        if (stdout && stdout.trim()) {
+            const lines = stdout.trim().split('\n');
+            lines.forEach(line => {
+                const ssidMatch = line.match(/SSID:\s*(.+?)(?:\s|$)/);
+                const signalMatch = line.match(/signal:\s*(-?[\d.]+)/);
+                if (ssidMatch && ssidMatch[1] && ssidMatch[1] !== '\\x00') {
+                    networks.push({
+                        ssid: ssidMatch[1].trim(),
+                        signal: signalMatch ? parseFloat(signalMatch[1]) : -100
+                    });
+                }
+            });
+        }
+        // Deduplicate by SSID, keep strongest signal
         const unique = [...new Map(networks.map(n => [n.ssid, n])).values()];
+        unique.sort((a, b) => b.signal - a.signal);
         res.json({ networks: unique });
+    });
+});
+
+// Get available display resolutions from xrandr
+app.get('/api/display/modes', (req, res) => {
+    exec("DISPLAY=:0 xrandr 2>/dev/null | grep -E '^\\s+[0-9]+x[0-9]+' | awk '{print $1}' | sort -t x -k1 -rn | uniq", { timeout: 5000 }, (error, stdout) => {
+        const modes = stdout ? stdout.trim().split('\n').filter(m => m.match(/^\d+x\d+$/)) : [];
+        res.json({ modes });
     });
 });
 
@@ -189,12 +188,13 @@ app.get('/api/system/info', (req, res) => {
         ram_percent: "free | awk '/^Mem:/ {printf \"%.0f\", $3/$2*100}'",
         storage: "df -h / | awk 'NR==2 {print $3 \"/\" $2}'",
         storage_percent: "df / | awk 'NR==2 {print $5}' | tr -d '%'",
-        os_version: 'cat /etc/armbian-release 2>/dev/null | grep VERSION= | cut -d= -f2 || lsb_release -d -s',
+        os_version: 'echo "v8-3-1-FLASH"',
         ip_address: "hostname -I | awk '{print $1}'",
         dns: "cat /etc/resolv.conf | grep nameserver | head -1 | awk '{print $2}'",
-        interfaces: "ip -br addr show",
+        interfaces: "ip -o addr show | awk '{print $2, $3, $4}' | grep -v '^lo '",
         display_resolution: "DISPLAY=:0 xrandr 2>/dev/null | grep '[*]' | head -1 | awk '{print $1}'",
-        display_scale: "echo $ODS_SCALE"
+        display_scale: "echo $ODS_SCALE",
+        disk_total: "lsblk -dn -o SIZE /dev/mmcblk0 2>/dev/null || echo '—'"
     };
 
     let completed = 0;
@@ -221,6 +221,7 @@ app.get('/api/system/info', (req, res) => {
                     ram_percent: parseInt(info.ram_percent) || 0,
                     storage_usage: info.storage,
                     storage_percent: parseInt(info.storage_percent) || 0,
+                    disk_total: info.disk_total ? info.disk_total.trim() : '—',
                     os_version: info.os_version,
                     ip_address: info.ip_address,
                     dns: info.dns,
@@ -242,6 +243,32 @@ app.post('/api/system/reboot', (req, res) => {
 app.post('/api/system/shutdown', (req, res) => {
     res.json({ success: true, message: 'Shutting down in 3 seconds...' });
     setTimeout(() => exec('shutdown -h now'), 3000);
+});
+
+app.post('/api/system/resolution', (req, res) => {
+    const { resolution } = req.body;
+    if (!resolution || !resolution.match(/^\d+x\d+$/)) {
+        return res.status(400).json({ error: 'Invalid resolution format' });
+    }
+    // Change resolution and recalculate ODS_SCALE
+    const cmd = `
+        DISPLAY=:0 xrandr --output $(DISPLAY=:0 xrandr | grep ' connected' | head -1 | awk '{print $1}') --mode ${resolution} 2>&1
+        SCREEN_W=$(echo ${resolution} | cut -d'x' -f1)
+        if [ "$SCREEN_W" -ge 3000 ]; then
+            export ODS_SCALE=2
+        elif [ "$SCREEN_W" -ge 2000 ]; then
+            export ODS_SCALE=1.5
+        else
+            export ODS_SCALE=1
+        fi
+        echo "SCALE=$ODS_SCALE"
+    `;
+    exec(cmd, { timeout: 10000 }, (error, stdout) => {
+        if (error && !stdout.includes('SCALE=')) {
+            return res.status(500).json({ error: 'Failed to set resolution: ' + (stdout || error.message) });
+        }
+        res.json({ success: true, message: `Resolution set to ${resolution}. Restart services to apply scaling.` });
+    });
 });
 
 app.post('/api/system/cache-clear', (req, res) => {
