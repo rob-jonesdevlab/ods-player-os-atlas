@@ -91,10 +91,10 @@ The restore script:
 Phase 0 (Insert)     Phase 1 (Clone)      Phase 2 (Boot)       Phase 3 (Boot)
 ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
 │ Base Armbian  │    │ Provisioned  │    │ Enrollment   │    │ Production   │
-│ + firstboot   │───▶│ golden image │───▶│ sealed splash│───▶│ v8-0-6-FLASH │
-│ inject_atlas  │    │ partclone    │    │ mgmt server  │    │ kiosk mode   │
+│ + firstboot   │───▶│ golden image │───▶│ sealed splash│───▶│ Player OS    │
+│ inject_atlas  │    │ partclone    │    │ mgmt server  │    │ full boot    │
 └──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
-    inject_atlas.sh     partclone clone     ods-enrollment-boot   ods-kiosk-wrapper
+    inject_atlas.sh     partclone clone     ods-enrollment-boot   ods-player-boot-wrapper
                         + restore           (no Chromium/Xorg)    (full boot pipeline)
 ```
 

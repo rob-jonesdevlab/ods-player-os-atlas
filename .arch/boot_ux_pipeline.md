@@ -1,71 +1,109 @@
-# Boot UX Pipeline — v8-0-6-FLASH (Stable)
+# Boot UX Pipeline — ODS Player OS
 
-## Status: ✅ GREY FLASH ELIMINATED
-
-**Tag:** `boot-ux-v8-0-6-flash` (pending)
-**Rollback:** `git checkout boot-ux-v12-stable`
+## Status: ✅ Premium Boot — Multi-Resolution Verified
 
 ---
 
-## Problem
+## Architecture Overview
 
-Chromium 144's GPU compositor creates a `gray(60)` = `#3C3C3C` surface for ~400ms when the kiosk window first maps. This happens BEFORE the renderer draws any content. Previous attempts to fix with `--disable-gpu-compositing` and `--default-background-color=000000` reduced but didn't eliminate it.
+The boot pipeline provides a seamless visual experience from power-on to page-ready, with zero console text, zero grey flash, and animated transitions across every stage. All splash assets use 4K source images that are dynamically resized to the detected display resolution.
 
-## Solution: Overlay Approach
-
-A fullscreen overlay window sits ON TOP of Chromium during initialization, hiding the grey compositor surface. The overlay is killed after the page signals ready + 1s buffer.
-
-**Critical discovery:** `--kiosk` mode bypasses Openbox window stacking — the overlay can't sit above it. Fix: `--app` mode + `--start-maximized` respects WM layer rules and is visually identical to kiosk mode.
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Power On → Plymouth throbber → FBI bridge → Starting services          │
+│          → Launching ODS overlay → Page visible                        │
+│                                                                        │
+│ Each stage covers the gap left by the previous one.                    │
+│ At no point does the user see console text, a cursor, or bare TTY.    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Boot Pipeline Sequence
 
 ```
-Phase 1: Plymouth throbber (5s)           — kernel/initramfs splash
-Phase 2: FBI bridge animation (~3.5s)     — "System ready... Booting OS..." on framebuffer (RGB565)
-Phase 3: Starting ODS services (1.5s)     — animated on Xorg root window
-Phase 4: Launching OS overlay (~6s)       — animated on overlay window, hides Chromium grey flash
-Phase 5: Page visible                     — overlay killed, rendered page revealed
+Stage 1: VT Blackout                       — TTY1-3 blanked, fb0 zeroed, cursors hidden
+Stage 2: Plymouth throbber (5s hold)       — kernel/initramfs splash, 75-frame spinner
+Stage 3: FBI bridge animation (~3.5s)      — "Booting system" + 1-5 dots (raw RGB565 → /dev/fb0)
+Stage 4: Starting services (1.5s)          — 5-frame animation on Xorg root window
+Stage 5: Setup (Openbox, display config)   — WM starts, xrandr resolution applied
+Stage 6: Launching ODS overlay (~6s)       — 5-frame animation on overlay window, hides Chromium init
+Stage 7: Page visible                      — overlay killed, rendered page revealed
 ```
 
-### Phase Details
+### Stage Details
 
-| Phase | Technology | Font | Size | Animation |
-|-------|-----------|------|------|-----------|
-| Plymouth | two-step module, throbber PNGs | Built-in | 53px (25% enlarged) | 75-frame spinner |
-| FBI bridge | Raw RGB565 → `/dev/fb0` | DejaVu Sans | 28pt | 8 frames, 150-300ms progressive |
-| Starting ODS | ImageMagick `display -window root` | DejaVu Sans Bold | 42pt | 5 frames × 300ms |
-| Launching OS | ImageMagick `display -window $WID` | DejaVu Sans Bold | 42pt | 5 frames × 400ms |
+| Stage | Technology | Animation | Notes |
+|-------|-----------|-----------|-------|
+| Plymouth | two-step throbber module | 75-frame spinner at .90 vertical | Held for 5s, then quit-with-retain |
+| FBI bridge | Raw RGB565 → `/dev/fb0` | "Booting system" + 1-5 dots | Seamless handoff: starts BEFORE Plymouth quits |
+| Starting services | `display -window root` | "Starting services" + 1-5 dots | Painted directly on Xorg root window |
+| Launching ODS | `display -window $OVERLAY_WID` | "Launching ODS" + 1-5 dots | Pre-resized via `convert -resize` to screen resolution |
 
-### Two-Tier Font System
+### Splash Frame Spec (5-Frame Standard)
 
-- **Pre-boot (system feel):** DejaVu Sans (regular) 28pt — FBI bridge
-- **Post-boot (signage feel):** DejaVu Sans Bold 42pt — Starting ODS + Overlay
+All splash animations use exactly **5 frames** with 1-5 trailing dots. Text is centered on the **base words only** — dots trail to the right and are not part of the centering calculation.
 
-42pt is industry standard for 4K digital signage viewed at 10-15 feet.
+| Set | Text | Repo Location |
+|-----|------|--------------|
+| `fbi_boot_1-5` (.raw + .png) | Booting system | `brand/splash/generated/` |
+| `splash_ods_1-5` (.png) | Starting services | `brand/splash/generated/` |
+| `overlay_launch_1-5` (.png) | Launching ODS | `brand/splash/generated/` |
+| `enroll_fbi_1-5` (.raw + .png) | Connecting to server | `brand/splash/generated/` |
+| `enroll_progress_1-5` (.png) | Enrollment in progress | `brand/splash/generated/` |
+
+**Font:** DejaVu Sans Mono, 54pt, white on dark background
+**Canvas:** 3840×2160 (4K source, resized at runtime)
+**Generation:** `scripts/generate_splash_frames.sh` (run on jdl-mini-box)
 
 ---
 
-## Key Files (on device)
+## Key Files
+
+### On Device (`/usr/local/bin/`)
 
 | File | Purpose |
 |------|---------|
-| `/usr/local/bin/ods-kiosk-wrapper.sh` | Boot pipeline orchestrator |
-| `/usr/local/bin/start-kiosk.sh` | Chromium launcher (`--app` mode) |
-| `/etc/ods/openbox-rc.xml` | Window manager config (BOOT_OVERLAY layer rule) |
-| `/usr/share/plymouth/themes/ods/watermark.png` | Base splash image |
-| `/usr/share/plymouth/themes/ods/fbi_boot_*.raw` | FBI bridge animation (8 frames, RGB565) |
-| `/usr/share/plymouth/themes/ods/splash_ods_*.png` | Starting ODS animation (5 frames) |
-| `/usr/share/plymouth/themes/ods/overlay_launch_*.png` | Launching OS overlay (5 frames) |
-| `/usr/share/plymouth/themes/ods/throbber-*.png` | Plymouth throbber (75 frames, 53px) |
+| `ods-player-boot-wrapper.sh` | Boot pipeline orchestrator (universal — no ATLAS tag) |
+| `start-player-ATLAS.sh` | Chromium launcher (`--app` mode, OS-specific) |
+| `ods-phase-selector.sh` | Routes Phase 2 (enrollment) vs Phase 3 (production) |
+| `ods-enrollment-boot.sh` | Phase 2 enrollment boot (no Chromium/Xorg) |
+| `ods-display-config.sh` | xrandr resolution configuration |
 
-## Key Files (in repo)
+### On Device (`/usr/share/plymouth/themes/ods/`)
 
 | File | Purpose |
 |------|---------|
-| `scripts/ods-kiosk-wrapper-v8-0-6.sh` | Stable wrapper backup |
-| `scripts/start-kiosk-v8-0-6.sh` | Stable kiosk launcher backup |
+| `watermark.png` | Base splash image (4K, logo + slogan) |
+| `fbi_boot_1-5.raw` | FBI bridge animation (RGB565 for `/dev/fb0`) |
+| `splash_ods_1-5.png` | Starting services animation |
+| `overlay_launch_1-5.png` | Launching ODS overlay animation |
+| `throbber-0000-0074.png` | Plymouth throbber (75 frames) |
+
+### In Repo (`scripts/`)
+
+| File | Purpose |
+|------|---------|
+| `ods-player-boot-wrapper.sh` | Boot wrapper source (deployed as-is) |
+| `start-player-os-ATLAS.sh` | Chromium launcher source |
+| `generate_splash_frames.sh` | Regenerates all splash PNGs on jdl-mini-box |
+
+### Single Source of Truth
+
+All splash assets live in `brand/splash/generated/`. This is the only location — there is no duplicate `assets/plymouth/` directory. Deployment copies from `brand/splash/generated/` to the device's Plymouth theme directory.
+
+---
+
+## Naming Convention
+
+| Category | ATLAS Tag? | Rationale |
+|----------|-----------|-----------|
+| Boot wrapper | **No** | Boot sequence is universal across all OS versions |
+| Chromium launcher | **Yes** | OS-specific configuration |
+| Systemd service | **Yes** | `ods-player-ATLAS.service` — OS-specific |
+| Signal file | **Yes** | `/tmp/ods-player-os-starting-ATLAS` |
+| Chromium policy | **Yes** | `ods-player-ATLAS.json` |
 
 ---
 
@@ -78,70 +116,30 @@ Phase 5: Page visible                     — overlay killed, rendered page reve
 | Overlay can't sit above kiosk window | Openbox `<layer>above</layer>` rule for `BOOT_OVERLAY` | v8-0-0 |
 | Framebuffer animation garbled | RGB565 format (16-bit fb0, not 32-bit BGRA) | v8-0-5 |
 | `preload.html` redirect stalls in `--app` mode | Direct URL to `network_setup.html` | v8-0-0 |
+| Overlay shows tiny mirror at 1080p | `convert -resize` before `display` (4K→detected res) | v8-3-2 |
 
 ---
 
-## Security Assessment
+## Multi-Resolution Support
 
-### `--no-sandbox` (HIGH RISK)
+The overlay and splash images are 4K source (3840×2160). At runtime, the boot wrapper detects the actual resolution via `xrandr` and uses `convert -resize "${SCREEN_FULL}!"` to scale them. This works at any resolution the display reports.
 
-Chromium runs as root without sandbox. Mitigated by:
-- Policy file suppresses warning banner
-- No user input (kiosk mode)
-- No external URLs loaded
-
-**Future fix (v8-1-0-FLASH):** Split systemd service into root phase (VT/Plymouth/Xorg) and `User=signage` phase (Openbox/Chromium with full sandbox).
-
----
-
-## Openbox Config (BOOT_OVERLAY Rule)
-
-```xml
-<application title="BOOT_OVERLAY">
-  <decor>no</decor>
-  <maximized>yes</maximized>
-  <layer>above</layer>
-  <fullscreen>yes</fullscreen>
-</application>
-```
+| Resolution | Scale Factor | Behavior |
+|-----------|-------------|----------|
+| 3840×2160 | 2x | Native 4K, no resize needed |
+| 2560×1440 | 1.5x | Resized from 4K |
+| 1920×1080 | 1x | Resized from 4K (most common) |
 
 ---
 
-## Versioning Scheme
+## Esper Enrollment Boot (Phase 2)
 
-Format: `vX-Y-Z-CODENAME` (major.minor.patch)
+When no enrollment flag exists, the phase selector routes to `ods-enrollment-boot.sh` instead of the production boot wrapper. This boot sequence uses its own splash frames:
 
-| Version | Scope |
-|---------|-------|
-| v8-0-0-FLASH | Initial overlay approach |
-| v8-0-1-FLASH | Simplified two-phase splash |
-| v8-0-2-FLASH | fbi bridge + splash image overlay |
-| v8-0-3-FLASH | Animated overlay with Launching OS frames |
-| v8-0-4-FLASH | Full animated pipeline |
-| v8-0-5-FLASH | RGB565 fix + two-tier fonts |
-| **v8-0-6-FLASH** | **Updated splash, faster fbi, 25% throbber (STABLE)** |
-| v8-1-0-FLASH | Systemd service split for sandbox (planned) |
+1. **`enroll_fbi_1-5`** — "Connecting to server" (8 second minimum display)
+2. **`enroll_progress_1-5`** — "Enrollment in progress" (until Esper reports success)
 
----
-
-## Deployment Pipeline Phases
-
-| Phase | Description | Boot Sequence |
-|-------|-------------|---------------|
-| Phase 0 | Base golden image | N/A |
-| Phase 1 | Golden + RustDesk, ready to clone | Minimal boot |
-| Phase 2 | Restored clone → Esper enrollment | Enrollment splash (TBD) |
-| Phase 3 | Post-Esper reboot → production | Current v8-0-6-FLASH pipeline |
-
----
-
-## Multi-Resolution Support (Planned)
-
-| Resolution | Name | Splash Size | Font Scale |
-|-----------|------|------------|------------|
-| 1920×1080 | HD | Native | 1x (21pt/28pt) |
-| 2560×1440 | 2K | Native | 1.33x (28pt/37pt) |
-| 3840×2160 | 4K | Native | 2x (28pt/42pt) |
+After enrollment completes, the device sets the enrolled flag and reboots into Phase 3 (production boot).
 
 ---
 
@@ -153,3 +151,7 @@ Format: `vX-Y-Z-CODENAME` (major.minor.patch)
 4. **Complete file rewrites via `scp`** are more reliable than `sed` edits
 5. **`preload.html` JS redirects stall in `--app` mode** — use direct URLs
 6. **Version, tag, and document before testing** — rollback saves hours
+7. **`display -geometry` doesn't resize images** — it only sets window size. Use `convert -resize` before piping to `display` for cross-resolution support
+8. **`ods-display-config.sh` runs BEFORE the overlay** — if it changes resolution, the overlay must use the new resolution, not the raw 4K
+9. **Center text on words, not on text+dots** — anchor X on base text width, dots trail right. Use monospace font for pixel-perfect consistency
+10. **Always check project docs for credentials** — don't guess SSH passwords when `atlas_secrets.conf` is right there in the repo
