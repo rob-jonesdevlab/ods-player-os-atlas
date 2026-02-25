@@ -117,15 +117,18 @@ log "Config complete"
 # ── STAGE 6: ANIMATED OVERLAY + CHROMIUM ─────────────────────────────
 rm -f /tmp/ods-loader-ready
 
-# Launch overlay with first "Launching OS" frame
+# Pre-resize first frame to actual screen resolution, then display
+# (4K PNGs must be resized when display runs at 1080p or 2K)
+log "Overlay: creating ${SCREEN_FULL:-3840x2160} overlay from 4K frame"
+convert "$ANIM_DIR/overlay_launch_1.png" -resize "${SCREEN_FULL:-3840x2160}!" /tmp/overlay_resized.png 2>/dev/null
 DISPLAY=:0 display -immutable -title BOOT_OVERLAY \
   -geometry ${SCREEN_FULL:-3840x2160}+0+0 \
-  "$ANIM_DIR/overlay_launch_1.png" 2>/dev/null &
+  /tmp/overlay_resized.png 2>/dev/null &
 OVERLAY_PID=$!
 sleep 0.3
 OVERLAY_WID=$(DISPLAY=:0 xdotool search --name BOOT_OVERLAY 2>/dev/null | head -1)
 [ -n "$OVERLAY_WID" ] && DISPLAY=:0 xdotool windowraise "$OVERLAY_WID" 2>/dev/null
-log "Overlay created (PID: $OVERLAY_PID, WID: $OVERLAY_WID)"
+log "Overlay created (PID: $OVERLAY_PID, WID: $OVERLAY_WID, Res: ${SCREEN_FULL})"
 
 # Launch Chromium behind overlay
 /usr/local/bin/start-kiosk.sh &
@@ -138,13 +141,15 @@ sleep 0.5
 log "Overlay re-raised"
 
 # Animate "Launching OS" on the overlay window
+# Pre-resize each frame then display into the existing overlay window
 (
     while [ ! -f /tmp/ods-loader-ready ]; do
         for _d in 1 2 3 4 5; do
             [ -f /tmp/ods-loader-ready ] && break 2
             if [ -n "$OVERLAY_WID" ]; then
                 DISPLAY=:0 xdotool windowraise "$OVERLAY_WID" 2>/dev/null
-                DISPLAY=:0 display -resize ${SCREEN_FULL:-3840x2160} -window "$OVERLAY_WID" "$ANIM_DIR/overlay_launch_${_d}.png" 2>/dev/null
+                convert "$ANIM_DIR/overlay_launch_${_d}.png" -resize "${SCREEN_FULL:-3840x2160}!" png:- 2>/dev/null | \
+                    DISPLAY=:0 display -window "$OVERLAY_WID" - 2>/dev/null
             fi
             sleep 0.4
         done
