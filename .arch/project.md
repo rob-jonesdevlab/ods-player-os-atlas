@@ -1,8 +1,8 @@
 # ODS Player OS Atlas — Architecture
 
 **Last Updated:** February 24, 2026  
-**Current Version:** v8-3-3  
-**Status:** Active development — splash standardized, kiosk terminology removed, ready for P:0 rebuild
+**Current Version:** v9-0-0-ORIGIN  
+**Status:** P:0 built — kiosk terminology removed, player naming established, ready for ODS Cloud pivot
 
 ---
 
@@ -91,17 +91,43 @@ See `.arch/image_processes.md` for detailed build commands and `.arch/build_guid
 - ✅ Directory consolidation — removed redundant `assets/plymouth/ods/`
 - ✅ 5-frame standard enforced across all splash animations
 
-### Version History
+### Golden Image History
+
+Complete lineage of every P:0 golden image ever built:
+
+| Image | Codename | Date | Milestone |
+|-------|----------|------|-----------|
+| v1-0-0 | INITIAL | 2/16/26 | First golden image — bare Armbian + firstboot injection |
+| v2-0 | SECURE | 2/16/26 | Root password, user creation, basic lockdown |
+| v3-0 | PRODUCTION | 2/16/26 | Express server, Chromium, systemd services |
+| v4-0 | LEGACY | 2/16/26 | Legacy script migration from ods-signage |
+| v5-0 | NATIVE | 2/16/26 | Native Armbian integration (dropped legacy wrappers) |
+| v6-0 | SPLASH | 2/18/26 | Plymouth boot splash, TTY hide, sleep prevention |
+| v7-0 | OPENBOX | 2/21/26 | Window manager, Chromium `--app` mode, grey flash hunt begins |
+| v7-1 through v7-4 | OPENBOX | 2/21/26 | Grey flash iterations — dark theme, xsetroot, VT fixes |
+| v7-5 | OPENBOX | 2/21/26 | Admin auth + Chromium managed policy (611 MB — minimal build) |
+| v7-6 | OPENBOX | 2/21/26 | su/PAM auth (yescrypt-safe), dark GTK |
+| v7-7 | OPENBOX | 2/21/26 | Removed `--force-dark-mode` (was painting grey), delayed plymouth quit |
+| v7-8 | OPENBOX | 2/21/26 | Removed `-background none` (grey stipple), xsetroot repaint |
+| v7-9 | OPENBOX | 2/21/26 | Unmasked plymouth-quit, reverted VT7→VT1 |
+| v7-10 | OPENBOX | 2/21/26 | ROOT CAUSE: boot started 26s after plymouth-quit, service dep fix |
+| v7-11 | OPENBOX | 2/21/26 | Continuous xsetroot repaint loop (covers modeset resets) |
+| v7-12 | OPENBOX | 2/21/26 | fbi bridge animation, FBI→Xorg handoff |
+| v7-13 | OPENBOX | 2/21/26 | Splash overlay approach — Openbox BOOT_OVERLAY rule |
+| v7-14-0 | OPENBOX | 2/21/26 | Full animated pipeline (Plymouth → FBI → splash → overlay) |
+| v7-14-1 | OPENBOX | 2/22/26 | Hotfix: throbber alignment, animation timing |
+| v8-1-0 | FLASH | 2/22/26 | Premium boot UX: 104 PNGs, 4K watermark, 5-frame FBI, throbber .90 |
+| v8-2-0 | FLASH | 2/22/26 | Secrets symlink, Plymouth .90/.5 config, generated assets path |
+| v8-2-1 | FLASH | 2/22/26 | 4K watermark fix, enrollment 5-frame splash, HD purge |
+| v8-2-2 | FLASH | 2/22/26 | Sync all 133 4K PNGs, throbber 106x106, Esper state cleanup |
+| v8-2-3 | FLASH | 2/22/26 | CRITICAL: Fix enrollment killed after 6s by service restart |
+| v8-2-4 | FLASH | 2/23/26 | Security: Remove --no-sandbox, Chromium runs as signage user |
+| **v9-0-0** | **ORIGIN** | **2/24/26** | **Major: Removed kiosk terminology, player naming, 5-frame standard, multi-res overlay, consolidated assets, comprehensive docs refresh** |
+
+### Commit History (v8-v9)
 
 | Version | Commit | Key Change |
 |---------|--------|------------|
-| v7-5 | `9470538` | Admin auth fix, wrapper v9, Chromium policy |
-| v7-6 | `4e61f5b` | su/PAM auth (yescrypt-safe), dark GTK theme |
-| v7-7 | `e8d9ec5` | Removed `--force-dark-mode` (grey #3C3C3C), delayed plymouth quit |
-| v7-8 | `cbf14b1` | Removed `-background none` (grey stipple), xsetroot in ready loop |
-| v7-9 | `f384229` | Unmasked plymouth-quit, reverted VT7→VT1 |
-| v7-10 | `ecd2562` | ROOT CAUSE: boot started 26s after plymouth-quit, service dep fix |
-| v7-11 | `a0ae81b` | Continuous xsetroot repaint loop (covers modeset resets) |
 | v8-1-0 | `6e5f0b9` | Premium boot UX: 104 PNGs, 4K watermark, 5-frame FBI, throbber .90 |
 | v8-2-0 | `e6cafbf` | Secrets symlink, Plymouth .90/.5 config, generated assets path |
 | v8-2-1 | `312881f` | 4K watermark fix, enrollment 5-frame splash, HD purge |
@@ -111,13 +137,15 @@ See `.arch/image_processes.md` for detailed build commands and `.arch/build_guid
 | v8-3-2 | `5b576a5` | Splash 5-frame standard + consolidated Plymouth assets |
 | v8-3-2 | `b3cb640` | Fix overlay tiny mirror — resize 4K PNGs to detected screen res |
 | v8-3-3 | `e417033` | Remove kiosk terminology — rename to player/ATLAS convention |
+| v9-0-0 | `7ab906c` | Docs refresh + P:0 golden image build as ORIGIN |
 
 ### Pending / Next Version
-- [ ] P:0 golden image rebuild with v8-3-3 firstboot
+- [x] P:0 golden image rebuild → **v9-0-0-ORIGIN**
 - [ ] Validate Esper enrollment end-to-end on fresh P:0 flash
-- [ ] Wayland/Cage migration for zero-flash boot
+- [ ] ODS Cloud — Account, Content, Device, User management
 - [ ] OTA updates from ODS Cloud dashboard
 - [ ] Remote background/content push
+- [ ] Wayland/Cage migration for zero-flash boot
 
 ## Script Architecture
 
