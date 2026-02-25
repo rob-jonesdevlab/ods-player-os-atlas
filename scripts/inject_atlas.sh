@@ -199,11 +199,11 @@ main() {
     log "   → Install packages (chromium, xorg, node, etc.)"
     log "   → Create users (signage, otter)"
     log "   → Clone & deploy Atlas app"
-    log "   → Deploy 6 systemd services + 3 kiosk scripts"
+    log "   → Deploy 6 systemd services + 3 player scripts"
     log "   → Install Plymouth ODS theme"
     log "   → Enroll Esper MDM"
     log "   → Install RustDesk remote access"
-    log "   → Reboot to production kiosk"
+    log "   → Reboot to production player"
     log ""
     log "🚀 Ready to flash!"
 }

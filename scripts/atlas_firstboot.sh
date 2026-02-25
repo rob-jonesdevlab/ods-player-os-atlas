@@ -4,7 +4,7 @@
 # ODS Player OS Atlas — Automated First Boot
 # =============================================================================
 # Adapted from Legacy: utils/automated_firstboot.sh
-# Transforms bare Armbian 26.2.1 trixie into production Player OS Atlas kiosk
+# Transforms bare Armbian 26.2.1 trixie into production ODS Player OS Atlas
 # Runs once on first boot via atlas-firstboot.service (systemd oneshot)
 # =============================================================================
 
@@ -126,7 +126,7 @@ install_packages() {
 create_users() {
     log "👥 Step 3: Creating users..."
 
-    # Create signage kiosk user (no password, minimal shell)
+    # Create signage player user (no password, minimal shell)
     if ! id signage >/dev/null 2>&1; then
         useradd -m -s /bin/bash signage
         passwd -d signage
@@ -207,11 +207,11 @@ deploy_atlas() {
 deploy_services() {
     log "⚙️  Step 5: Deploying systemd services..."
 
-    # --- ods-kiosk.service ---
+    # --- ods-player-ATLAS.service ---
     # Phase selector gates between Phase 2 (enrollment) and Phase 3 (production)
-    cat > /etc/systemd/system/ods-kiosk.service << 'EOF'
+    cat > /etc/systemd/system/ods-player-ATLAS.service << 'EOF'
 [Unit]
-Description=ODS Kiosk Boot (Phase Selector)
+Description=ODS Player Boot (Phase Selector)
 # Start after webserver is up. Do NOT wait for plymouth-hold.
 # Phase selector routes to enrollment boot or production wrapper.
 After=ods-webserver.service
@@ -255,7 +255,7 @@ EOF
     cat > /etc/systemd/system/ods-health-monitor.service << 'EOF'
 [Unit]
 Description=ODS Health Monitor
-After=ods-kiosk.service
+After=ods-player-ATLAS.service
 
 [Service]
 Type=simple
@@ -270,22 +270,22 @@ EOF
 
     # --- ods-plymouth-hold.service ---
     # CRITICAL: This service BLOCKS plymouth-quit.service from killing Plymouth
-    # until the kiosk wrapper signals it's taken over the display.
+    # until the boot wrapper signals it's taken over the display.
     # Without this, plymouth-quit kills Plymouth at ~10s, leaving a 26s gap
     # of bare TTY before Xorg starts.
     cat > /etc/systemd/system/ods-plymouth-hold.service << 'EOF'
 [Unit]
-Description=ODS Plymouth Hold - Block plymouth-quit until kiosk is ready
+Description=ODS Plymouth Hold - Block plymouth-quit until player is ready
 DefaultDependencies=no
 After=plymouth-start.service
 Before=plymouth-quit.service plymouth-quit-wait.service getty@tty1.service
 
 [Service]
 Type=oneshot
-# Wait for kiosk wrapper to signal it has taken over the display
-# /tmp/ods-kiosk-starting is touched by the wrapper AFTER VT1 blackout
+# Wait for boot wrapper to signal it has taken over the display
+# /tmp/ods-player-os-starting-ATLAS is touched by the wrapper AFTER VT1 blackout
 # Max wait 90s to prevent boot hang
-ExecStart=/bin/bash -c 'for i in $(seq 1 180); do [ -f /tmp/ods-kiosk-starting ] && break; sleep 0.5; done'
+ExecStart=/bin/bash -c 'for i in $(seq 1 180); do [ -f /tmp/ods-player-os-starting-ATLAS ] && break; sleep 0.5; done'
 RemainAfterExit=yes
 TimeoutStartSec=95
 
@@ -321,7 +321,7 @@ EOF
     cat > /etc/systemd/system/ods-display-config.service << 'EOF'
 [Unit]
 Description=ODS Display Configuration (xrandr)
-After=ods-kiosk.service
+After=ods-player-ATLAS.service
 
 [Service]
 Type=oneshot
@@ -337,10 +337,10 @@ EOF
     # --- ods-hide-tty.service ---
     cat > /etc/systemd/system/ods-hide-tty.service << 'EOF'
 [Unit]
-Description=Hide TTY1 text (kiosk mode)
+Description=Hide TTY1 text (player mode)
 DefaultDependencies=no
 After=local-fs.target
-Before=getty@tty1.service ods-kiosk.service
+Before=getty@tty1.service ods-player-ATLAS.service
 
 [Service]
 Type=oneshot
@@ -398,7 +398,7 @@ EOF
 
     # Enable all services
     systemctl daemon-reload
-    systemctl enable ods-kiosk.service
+    systemctl enable ods-player-ATLAS.service
     systemctl enable ods-webserver.service
     systemctl enable ods-health-monitor.service
     systemctl enable ods-plymouth-hold.service
@@ -411,18 +411,18 @@ EOF
     log "  ✅ All 9 services deployed and enabled"
 }
 
-# ─── Step 6: Deploy Kiosk Scripts ──────────────────────────────────────────
+# ─── Step 6: Deploy Player Scripts ─────────────────────────────────────────
 
-deploy_kiosk_scripts() {
-    log "🖥️  Step 6: Deploying kiosk scripts (v8-0-6-FLASH)..."
+deploy_player_scripts() {
+    log "🖥️  Step 6: Deploying player scripts (ATLAS)..."
 
     local REPO_SCRIPTS="/tmp/atlas_repo/scripts"
 
-    # --- start-kiosk.sh (v8-0-6-FLASH: --app mode for overlay compatibility) ---
-    cat > /usr/local/bin/start-kiosk.sh << 'SCRIPT'
+    # --- start-player-ATLAS.sh (--app mode for overlay compatibility) ---
+    cat > /usr/local/bin/start-player-ATLAS.sh << 'SCRIPT'
 #!/bin/bash
-# ODS Player OS - Start Kiosk v8-0-6-FLASH
-# Uses --app mode (not --kiosk) so overlay can stay above
+# ODS Player OS ATLAS — Start Player
+# Uses --app mode so overlay can stay above
 # Openbox handles maximization and decoration removal
 export DISPLAY=:0
 export HOME=/home/signage
@@ -453,11 +453,11 @@ exec chromium --no-sandbox \
   --force-dark-mode \
   --disable-gpu-compositing
 SCRIPT
-    chmod +x /usr/local/bin/start-kiosk.sh
+    chmod +x /usr/local/bin/start-player-ATLAS.sh
 
     # --- Chromium managed policy (suppresses password popup + autofill) ---
     mkdir -p /etc/chromium/policies/managed
-    cat > /etc/chromium/policies/managed/ods-kiosk.json << 'EOF'
+    cat > /etc/chromium/policies/managed/ods-player-ATLAS.json << 'EOF'
 {
   "PasswordManagerEnabled": false,
   "AutofillAddressEnabled": false,
@@ -470,17 +470,15 @@ SCRIPT
 EOF
     log "  ✅ Chromium managed policy deployed"
 
-    # --- ods-kiosk-wrapper.sh (v8-0-6-FLASH) ---
+    # --- ods-player-boot-wrapper.sh ---
     # Copy from repo scripts/ instead of inline heredoc for maintainability
-    if [ -f "$REPO_SCRIPTS/ods-kiosk-wrapper-v8-0-6.sh" ]; then
-        cp "$REPO_SCRIPTS/ods-kiosk-wrapper-v8-0-6.sh" /usr/local/bin/ods-kiosk-wrapper.sh
-        log "  ✅ ods-kiosk-wrapper.sh deployed (v8-0-6-FLASH from repo)"
+    if [ -f "$REPO_SCRIPTS/ods-player-boot-wrapper.sh" ]; then
+        cp "$REPO_SCRIPTS/ods-player-boot-wrapper.sh" /usr/local/bin/ods-player-boot-wrapper.sh
+        log "  ✅ ods-player-boot-wrapper.sh deployed (from repo)"
     else
-        log "  ⚠️  ods-kiosk-wrapper-v8-0-6.sh not found in repo — using inline fallback"
-        # Fallback: copy from assets if repo scripts missing
-        cp /tmp/atlas_repo/scripts/ods-kiosk-wrapper-v8-0-6.sh /usr/local/bin/ods-kiosk-wrapper.sh 2>/dev/null || true
+        log "  ⚠️  ods-player-boot-wrapper.sh not found in repo"
     fi
-    chmod +x /usr/local/bin/ods-kiosk-wrapper.sh
+    chmod +x /usr/local/bin/ods-player-boot-wrapper.sh
 
 
     # --- ods-phase-selector.sh (Phase 2/3 boot gate) ---
@@ -491,8 +489,8 @@ ENROLLED_FLAG="/etc/ods/esper_enrolled.flag"
 LOG="/home/signage/ODS/logs/boot/phase_selector.log"
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S.%3N') [PHASE] $1" | tee -a "$LOG"; }
 if [ -f "$ENROLLED_FLAG" ]; then
-    log "Phase 3: Enrolled flag found — launching production boot (v8-0-6-FLASH)"
-    exec /usr/local/bin/ods-kiosk-wrapper.sh
+    log "Phase 3: Enrolled flag found — launching production boot"
+    exec /usr/local/bin/ods-player-boot-wrapper.sh
 else
     log "Phase 2: No enrolled flag — launching enrollment boot"
     exec /usr/local/bin/ods-enrollment-boot.sh
@@ -658,7 +656,7 @@ echo "[DISPLAY] xrandr configuration applied"
 SCRIPT
     chmod +x /usr/local/bin/ods-display-config.sh
 
-    # --- Openbox config (Upgrade A: kiosk window rules) ---
+    # --- Openbox config (maximized, no decorations) ---
     mkdir -p /etc/ods
     cat > /etc/ods/openbox-rc.xml << 'OBXML'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -668,7 +666,7 @@ SCRIPT
   <placement><policy>Smart</policy></placement>
   <desktops><number>1</number></desktops>
 
-  <!-- No decorations on any window by default (kiosk mode) -->
+  <!-- No decorations on any window by default (player mode) -->
   <applications>
     <application class="*">
       <decor>no</decor>
@@ -744,7 +742,7 @@ LJSON
     chown -R signage:signage /home/signage/ODS/config
     log "  ✅ Display layout configs deployed (3 modes)"
 
-    log "  ✅ Kiosk scripts deployed (v6 — Openbox + 4-layer sleep prevention)"
+    log "  ✅ Player scripts deployed (Openbox + 4-layer sleep prevention)"
 }
 
 # ─── Step 7: Install Plymouth ODS Theme ────────────────────────────────────
@@ -891,7 +889,7 @@ configure_boot() {
     log "🔧 Step 8: Configuring boot parameters & sleep prevention..."
 
     # Disable VT switching — prevents Ctrl+Alt+Fn from opening white TTY pages
-    # This also fixes the white flash during splash→kiosk transition
+    # This also fixes the white flash during splash→player transition
     log "  → Disabling VT switching (prevents white TTY flash)..."
     mkdir -p /etc/X11/xorg.conf.d
     cat > /etc/X11/xorg.conf.d/10-no-vtswitch.conf << 'XORGCFG'
@@ -1121,7 +1119,7 @@ EOF
     cat > /etc/systemd/system/ods-rustdesk-enterprise.service << 'EOF'
 [Unit]
 Description=ODS Enterprise Remote Access (RustDesk System Service)
-After=network-online.target ods-kiosk.service
+After=network-online.target ods-player-ATLAS.service
 Wants=network-online.target
 
 [Service]
@@ -1199,7 +1197,7 @@ finalize_phase2() {
 
     log "  ✅ Firstboot service disabled (all phases complete)"
     log "🎉 Atlas Player OS — fully enrolled and ready!"
-    log "🔄 Rebooting to production kiosk in 5 seconds..."
+    log "🔄 Rebooting to production player in 5 seconds..."
     sleep 5
     reboot
 }
@@ -1244,7 +1242,7 @@ main() {
         create_users
         deploy_atlas
         deploy_services
-        deploy_kiosk_scripts
+        deploy_player_scripts
         deploy_plymouth
         configure_boot
         install_rustdesk      # Install RustDesk binary + deps in Phase 1 (generic, slow)

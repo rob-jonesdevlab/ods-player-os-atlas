@@ -1,8 +1,7 @@
 #!/bin/bash
-# ODS Kiosk Wrapper v8-0-6-FLASH — Updated splash, faster fbi, 25% throbber
-# Pipeline: Plymouth (5s) → fbi "System ready... Booting OS..." → "Starting ODS services" (1.5s) → animated overlay "Launching OS" → Page visible
-# BASELINE: boot-ux-v12-stable | ROLLBACK: git checkout boot-ux-v12-stable
-# DO NOT add set -e
+# ODS Player Boot Wrapper — Premium boot pipeline
+# Pipeline: Plymouth (5s) → FBI bridge → "Starting services" (1.5s) → animated overlay "Launching ODS" → Page visible
+# DO NOT add set -e — non-zero exits from display/xrandr will kill the wrapper
 
 LOG_DIR="/home/signage/ODS/logs/boot"
 mkdir -p "$LOG_DIR"
@@ -13,7 +12,7 @@ SPLASH_IMG="/usr/share/plymouth/themes/ods/watermark.png"
 ANIM_DIR="/usr/share/plymouth/themes/ods"
 
 # ── STAGE 1: VT BLACKOUT ─────────────────────────────────────────────
-log "Starting ODS kiosk wrapper v8-0-6-FLASH..."
+log "Starting ODS Player boot wrapper..."
 
 for i in $(seq 1 30); do [ -e /dev/dri/card1 ] && break; sleep 0.1; done
 log "DRM device ready"
@@ -31,7 +30,7 @@ log "VT blackout complete"
 # ── STAGE 2: PLYMOUTH + FBI BRIDGE ───────────────────────────────────
 dmesg -D 2>/dev/null || true
 echo 0 > /proc/sys/kernel/printk 2>/dev/null || true
-touch /tmp/ods-kiosk-starting
+touch /tmp/ods-player-os-starting-ATLAS
 sleep 5
 
 # Start fbi bridge animation BEFORE Plymouth quits (seamless transition)
@@ -131,9 +130,9 @@ OVERLAY_WID=$(DISPLAY=:0 xdotool search --name BOOT_OVERLAY 2>/dev/null | head -
 log "Overlay created (PID: $OVERLAY_PID, WID: $OVERLAY_WID, Res: ${SCREEN_FULL})"
 
 # Launch Chromium behind overlay
-/usr/local/bin/start-kiosk.sh &
-KIOSK_PID=$!
-log "Chromium launched behind overlay (PID: $KIOSK_PID)"
+/usr/local/bin/start-player-ATLAS.sh &
+PLAYER_PID=$!
+log "Chromium launched behind overlay (PID: $PLAYER_PID)"
 
 # Re-raise overlay
 sleep 0.5
@@ -185,21 +184,21 @@ log "Overlay killed — page visible"
 
 # ── STAGE 8: CLEANUP ─────────────────────────────────────────────────
 plymouth quit 2>/dev/null || true
-rm -f /tmp/ods-kiosk-starting /tmp/ods-loader-ready "$STOP_FBI"
+rm -f /tmp/ods-player-os-starting-ATLAS /tmp/ods-loader-ready "$STOP_FBI"
 find "$LOG_DIR" -name "boot_*.log" -type f -mtime +7 -delete 2>/dev/null || true
 log "Boot pipeline complete."
 
-wait $KIOSK_PID 2>/dev/null
-log "Kiosk process exited"
+wait $PLAYER_PID 2>/dev/null
+log "Player process exited"
 
 # ── CHROMIUM RESPAWN LOOP ─────────────────────────────────────────
 # If Chromium exits (e.g. Ctrl+W or crash), restart it automatically
 while true; do
     log "WARN: Chromium exited — respawning in 2s..."
     sleep 2
-    /usr/local/bin/start-kiosk.sh &
-    KIOSK_PID=$!
-    log "Chromium respawned (PID: $KIOSK_PID)"
-    wait $KIOSK_PID 2>/dev/null
+    /usr/local/bin/start-player-ATLAS.sh &
+    PLAYER_PID=$!
+    log "Chromium respawned (PID: $PLAYER_PID)"
+    wait $PLAYER_PID 2>/dev/null
     log "Chromium exited again"
 done

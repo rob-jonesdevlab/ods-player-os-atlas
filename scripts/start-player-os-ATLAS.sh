@@ -1,27 +1,20 @@
 #!/bin/bash
-# ODS Player OS - Start Kiosk v12
-# STABLE BASELINE: "boot-ux-v12-stable"
-# SECURITY: Chromium runs as the 'signage' user (not root) to enable sandbox.
-# The wrapper runs as root for Xorg/framebuffer access, then drops privileges
-# to signage for Chromium. This eliminates the --no-sandbox requirement.
+# ODS Player OS ATLAS — Start Player
+# Uses --app mode (not --kiosk) so overlay can stay above
+# Openbox handles maximization and decoration removal
 #
-# Chromium policy at /etc/chromium/policies/managed/ods-kiosk.json
-# suppresses the security warning banner:
-#   { "CommandLineFlagSecurityWarningsEnabled": false }
+# SECURITY NOTE: --no-sandbox required (root). See .arch/boot_ux_pipeline.md
 
 export DISPLAY=:0
 export HOME=/home/signage
 
-# Grant X11 access to all local users
 xhost +local: 2>/dev/null || true
-
-# Ensure Chromium profile is owned by signage
 chown -R signage:signage /home/signage/.config/chromium 2>/dev/null
 rm -f /home/signage/.config/chromium/SingletonLock 2>/dev/null
 
-exec sudo -u signage chromium \
-  --kiosk \
-  --start-fullscreen \
+exec chromium --no-sandbox \
+  --app="http://localhost:8080/network_setup.html" \
+  --start-maximized \
   --noerrdialogs \
   --disable-infobars \
   --disable-translate \
@@ -39,5 +32,4 @@ exec sudo -u signage chromium \
   --disable-autofill-keyboard-accessory-view \
   --default-background-color=000000 \
   --force-dark-mode \
-  --disable-gpu-compositing \
-  "http://localhost:8080/preload.html"
+  --disable-gpu-compositing

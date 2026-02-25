@@ -17,7 +17,7 @@ MAX_ATTEMPTS=3
 LOCK_FILE="/tmp/ods-enrollment-boot.lock"
 
 # ── PREVENT SERVICE RESTART (critical fix) ──────────────────────────
-# ods-kiosk.service has Restart=always/RestartSec=10 which kills enrollment
+# ods-player-ATLAS.service has Restart=always/RestartSec=10 which kills enrollment
 # after ~6s by restarting the phase selector. Disable restart during enrollment.
 if [ -f "$LOCK_FILE" ]; then
     log "Enrollment already running (lock file exists) — exiting"
@@ -26,9 +26,9 @@ fi
 echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
-# Override kiosk service to not restart while we're running
-mkdir -p /etc/systemd/system/ods-kiosk.service.d
-cat > /etc/systemd/system/ods-kiosk.service.d/no-restart-during-enroll.conf << 'OVERRIDE'
+# Override player service to not restart while we're running
+mkdir -p /etc/systemd/system/ods-player-ATLAS.service.d
+cat > /etc/systemd/system/ods-player-ATLAS.service.d/no-restart-during-enroll.conf << 'OVERRIDE'
 [Service]
 Restart=no
 OVERRIDE
