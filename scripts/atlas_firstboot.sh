@@ -98,6 +98,23 @@ wait_for_network() {
     while [ $elapsed -lt $MAX_WAIT ]; do
         if ping -c 1 -W 2 8.8.8.8 &>/dev/null; then
             log "  ✅ Network is online (waited ${elapsed}s)"
+
+            # CRITICAL: Force NTP clock sync before apt runs
+            # Without correct time, apt signature checks fail with
+            # "Not live until <future date>" → stale index → package 404s
+            log "  🕐 Syncing system clock via NTP..."
+            systemctl restart systemd-timesyncd 2>/dev/null || true
+            local ntp_wait=0
+            while [ $ntp_wait -lt 30 ]; do
+                if timedatectl show -p NTPSynchronized --value 2>/dev/null | grep -q "yes"; then
+                    log "  ✅ Clock synced: $(date)"
+                    return 0
+                fi
+                ntp_wait=$((ntp_wait + 2))
+                sleep 2
+            done
+            # Even if NTP didn't confirm, clock may be close enough after timesyncd restart
+            log "  ⚠️  NTP sync timeout — current time: $(date)"
             return 0
         fi
         elapsed=$((elapsed + INTERVAL))
@@ -161,10 +178,9 @@ install_packages() {
         log "  ❌ Batch 1 FAILED — git/node not installed. deploy_atlas will fail."
     fi
 
-    # ── Batch 2: Display stack (chromium, xorg, openbox) ──
-    log "  → Batch 2: Display stack (chromium, xorg, openbox)..."
+    # ── Batch 2a: Display stack (xorg, openbox — no chromium yet) ──
+    log "  → Batch 2a: Display stack (xorg, openbox)..."
     apt-get install -y --fix-missing \
-        chromium \
         xserver-xorg \
         x11-xserver-utils \
         openbox \
@@ -173,7 +189,24 @@ install_packages() {
         gnome-themes-extra \
         unclutter \
         2>&1 | tee -a "$LOG_FILE" || \
-        log "  ⚠️  Batch 2 partial failure (chromium mirror may be stale)"
+        log "  ⚠️  Batch 2a partial failure"
+
+    # ── Batch 2b: Chromium (separated — most failure-prone package) ──
+    log "  → Batch 2b: Chromium browser..."
+    if ! apt-get install -y --fix-missing chromium 2>&1 | tee -a "$LOG_FILE"; then
+        log "  ⚠️  Chromium install failed — refreshing package index and retrying..."
+        # Clock should be synced by now; re-run apt update for fresh indices
+        apt-get update -y 2>&1 | tee -a "$LOG_FILE"
+        if ! apt-get install -y --fix-missing chromium 2>&1 | tee -a "$LOG_FILE"; then
+            log "  ❌ Chromium install failed after retry"
+        fi
+    fi
+
+    if command -v chromium &>/dev/null || [ -f /usr/bin/chromium ]; then
+        log "  ✅ Chromium installed"
+    else
+        log "  ❌ Chromium NOT installed — display will not work"
+    fi
 
     # ── Batch 3: Build tools & boot UI ──
     log "  → Batch 3: Build tools & boot UI..."
@@ -187,7 +220,7 @@ install_packages() {
     # ── Verify critical packages ──
     log "  → Verifying critical packages..."
     local all_ok=true
-    for pkg in git node npm; do
+    for pkg in git node npm chromium; do
         if command -v "$pkg" &>/dev/null; then
             log "    ✅ $pkg: $(command -v $pkg)"
         else
@@ -199,7 +232,7 @@ install_packages() {
     if [ "$all_ok" = true ]; then
         log "  ✅ All critical packages installed"
     else
-        log "  ⚠️  Some critical packages missing — deploy_atlas may fail"
+        log "  ⚠️  Some critical packages missing"
     fi
 }
 
