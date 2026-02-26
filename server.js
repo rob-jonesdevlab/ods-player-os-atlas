@@ -462,8 +462,131 @@ app.get('/api/device/info', (req, res) => {
 });
 
 // ========================================
+// CONTENT CACHE API
+// ========================================
+
+const cacheManager = require('./player/cache-manager');
+
+// Manual sync trigger
+app.post('/api/cache/sync', async (req, res) => {
+    try {
+        const enrollment = cacheManager.getCachedConfig()
+            ? JSON.parse(fs.readFileSync('/var/lib/ods/enrollment.flag', 'utf8'))
+            : null;
+
+        if (!enrollment) {
+            return res.status(400).json({ error: 'Player not enrolled' });
+        }
+
+        const result = await cacheManager.syncContent(
+            enrollment.cloud_url,
+            enrollment.player_id,
+            enrollment.api_token
+        );
+
+        res.json(result);
+    } catch (error) {
+        console.error('[Cache] Sync error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Cache status
+app.get('/api/cache/status', (req, res) => {
+    const offline = cacheManager.checkOfflineCapability();
+    const manifest = cacheManager.loadManifest();
+
+    res.json({
+        canOperate: offline.canOperate,
+        assetCount: offline.assetCount,
+        configCached: offline.config !== null,
+        configHash: offline.config?.config_hash || null,
+        assets: Object.entries(manifest).map(([id, entry]) => ({
+            id,
+            filename: entry.filename,
+            type: entry.type,
+            checksum: entry.checksum,
+            downloadedAt: entry.downloadedAt
+        }))
+    });
+});
+
+// Serve cached content files
+app.get('/api/cache/content/:contentId', (req, res) => {
+    const localPath = cacheManager.getCachedAssetPath(req.params.contentId);
+    if (!localPath) {
+        return res.status(404).json({ error: 'Content not cached' });
+    }
+    res.sendFile(localPath);
+});
+
+// Clean stale cache
+app.post('/api/cache/clean', (req, res) => {
+    const maxDays = req.body.maxAgeDays || 7;
+    cacheManager.cleanStaleCache(maxDays);
+    res.json({ success: true, message: `Cleaned stale files older than ${maxDays} days` });
+});
+
+// ========================================
+// HEARTBEAT SYNC LOOP
+// ========================================
+
+let syncInterval = null;
+
+function startSyncLoop() {
+    const ENROLLMENT_FILE = '/var/lib/ods/enrollment.flag';
+    if (!fs.existsSync(ENROLLMENT_FILE)) {
+        console.log('[Cache] Not enrolled — sync loop disabled');
+        return;
+    }
+
+    try {
+        const enrollment = JSON.parse(fs.readFileSync(ENROLLMENT_FILE, 'utf8'));
+        if (!enrollment.cloud_url || !enrollment.player_id || !enrollment.api_token) {
+            console.log('[Cache] Incomplete enrollment — sync loop disabled');
+            return;
+        }
+
+        // Initialize cache directories
+        cacheManager.initCacheDirs();
+
+        // Run initial sync
+        console.log('[Cache] Running initial content sync...');
+        cacheManager.syncContent(enrollment.cloud_url, enrollment.player_id, enrollment.api_token)
+            .then(result => console.log(`[Cache] Initial sync: ${JSON.stringify(result)}`))
+            .catch(err => console.error('[Cache] Initial sync failed:', err.message));
+
+        // Start periodic sync (every 60 seconds)
+        const intervalSeconds = 60;
+        syncInterval = setInterval(async () => {
+            try {
+                const result = await cacheManager.syncContent(
+                    enrollment.cloud_url,
+                    enrollment.player_id,
+                    enrollment.api_token
+                );
+                if (result.downloaded > 0 || result.removed > 0) {
+                    console.log(`[Cache] Sync update: ${JSON.stringify(result)}`);
+                }
+            } catch (err) {
+                console.error('[Cache] Sync error:', err.message);
+            }
+        }, intervalSeconds * 1000);
+
+        console.log(`[Cache] Sync loop started (every ${intervalSeconds}s)`);
+
+        // Clean stale cache daily
+        setInterval(() => cacheManager.cleanStaleCache(7), 24 * 60 * 60 * 1000);
+
+    } catch (err) {
+        console.error('[Cache] Failed to start sync loop:', err.message);
+    }
+}
+
+// ========================================
 // START SERVER
 // ========================================
 app.listen(PORT, () => {
     console.log(`[SETUP] ODS Player OS v7 server running on port ${PORT}`);
+    startSyncLoop();
 });
