@@ -79,8 +79,32 @@ bypass_firstlogin() {
 
     log "  ✅ First-login bypass confirmed"
 }
+# ─── Step 1b: Wait for Network ──────────────────────────────────────────────
+# Service no longer depends on network-online.target (it blocked forever on
+# fresh Pi without ethernet). Instead we wait here with visible countdown.
 
-# ─── Step 2: Install Packages ──────────────────────────────────────────────
+wait_for_network() {
+    log "🌐 Step 1b: Waiting for network connectivity..."
+    local MAX_WAIT=120
+    local INTERVAL=5
+    local elapsed=0
+
+    while [ $elapsed -lt $MAX_WAIT ]; do
+        if ping -c 1 -W 2 8.8.8.8 &>/dev/null; then
+            log "  ✅ Network is online (waited ${elapsed}s)"
+            return 0
+        fi
+        elapsed=$((elapsed + INTERVAL))
+        log "  ⏳ No network yet... (${elapsed}/${MAX_WAIT}s)"
+        sleep $INTERVAL
+    done
+
+    log "  ⚠️  Network not available after ${MAX_WAIT}s — proceeding anyway"
+    log "  ⚠️  apt install and git clone will likely fail without network"
+    return 1
+}
+
+
 
 install_packages() {
     log "📦 Step 2: Installing packages..."
@@ -1257,6 +1281,7 @@ main() {
         log "💻 Host: $(hostname)"
 
         bypass_firstlogin
+        wait_for_network
         install_packages
         create_users
         deploy_atlas

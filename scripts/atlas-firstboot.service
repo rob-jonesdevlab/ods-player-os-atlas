@@ -1,9 +1,10 @@
 [Unit]
 Description=ODS Player OS Atlas — Automated First Boot Setup
-After=network-online.target
-Wants=network-online.target
-# Use ODS-owned gate file instead of Armbian's .not_logged_in_yet
-# (Armbian's first-login deletes the old file before we can run — race condition)
+# Start after basic system is up, but do NOT require network-online.target
+# (network-online blocks forever if no ethernet/WiFi is configured on fresh Pi)
+# The firstboot script handles its own network wait internally.
+After=basic.target
+Wants=network.target
 ConditionPathExists=/var/lib/ods/atlas_firstboot_pending
 
 [Service]
@@ -11,7 +12,7 @@ Type=oneshot
 User=root
 Group=root
 ExecStart=/usr/local/bin/atlas_firstboot.sh
-# Output to tty1 (console) + journal so boot steps are visible on screen
+# Output to tty1 (console) so boot steps are visible on screen
 StandardOutput=tty
 StandardError=tty
 TTYPath=/dev/tty1
