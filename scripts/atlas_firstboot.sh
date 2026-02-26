@@ -57,20 +57,27 @@ error() {
 # ─── Step 1: Armbian First-Login Bypass ─────────────────────────────────────
 
 bypass_firstlogin() {
-    log "🔧 Step 1: Bypassing Armbian first-login..."
+    log "🔧 Step 1: Verifying Armbian first-login bypass..."
 
-    # Remove first-login marker
+    # NOTE: The heavy lifting is now done at inject time (inject_atlas.sh):
+    #   - Root password pre-set via /etc/shadow
+    #   - armbian-firstrun.service masked
+    #   - /root/.not_logged_in_yet removed
+    # This step is kept as a safety net in case inject missed something.
+
+    # Remove Armbian gate file (if somehow still present)
     rm -f /root/.not_logged_in_yet
 
-    # Set root password
+    # Set root password (idempotent — already set at inject)
     echo "root:$ROOT_PASSWORD" | chpasswd
-    log "  ✅ Root password set"
+    log "  ✅ Root password verified"
 
-    # Disable Armbian first-login service if present
+    # Disable Armbian first-login services (idempotent)
     systemctl disable armbian-firstlogin 2>/dev/null || true
     systemctl disable armbian-first-run 2>/dev/null || true
+    systemctl mask armbian-firstrun 2>/dev/null || true
 
-    log "  ✅ First-login bypassed"
+    log "  ✅ First-login bypass confirmed"
 }
 
 # ─── Step 2: Install Packages ──────────────────────────────────────────────
@@ -1160,11 +1167,13 @@ finalize_phase1() {
     mkdir -p /var/lib/ods
     echo "2" > /var/lib/ods/phase
 
-    # CRITICAL: Re-create the firstboot gate file!
-    # atlas-firstboot.service has ConditionPathExists=/root/.not_logged_in_yet
-    # bypass_firstlogin() removes this file. Without it, systemd skips Phase 2.
-    touch /root/.not_logged_in_yet
-    log "  ✅ Firstboot gate file restored for Phase 2"
+    # ODS gate file is already present (created by inject_atlas.sh)
+    # Verify it exists for Phase 2
+    if [ ! -f /var/lib/ods/atlas_firstboot_pending ]; then
+        touch /var/lib/ods/atlas_firstboot_pending
+        log "  ⚠️  Gate file was missing — recreated"
+    fi
+    log "  ✅ ODS gate file verified for Phase 2"
 
     # Clear machine-id so each cloned device generates a unique one
     echo "" > /etc/machine-id
@@ -1197,8 +1206,10 @@ finalize_phase2() {
     # Disable firstboot service — no more phases needed
     systemctl disable atlas-firstboot.service 2>/dev/null || true
 
-    # Remove phase marker
+    # Remove phase marker and gate file (prevents any future re-runs)
     rm -f /var/lib/ods/phase
+    rm -f /var/lib/ods/atlas_firstboot_pending
+    log "  ✅ ODS gate file removed (no re-runs)"
 
     # Copy log to persistent location
     cp "$LOG_FILE" /home/signage/ODS/logs/atlas_phase2.log 2>/dev/null || true

@@ -121,6 +121,42 @@ main() {
     ln -sf /etc/systemd/system/atlas-firstboot.service \
         "$WORK_DIR/rootfs/etc/systemd/system/multi-user.target.wants/"
 
+    # ─── SAFEGUARD: Create ODS gate file ────────────────────────────────
+    # The service uses ConditionPathExists=/var/lib/ods/atlas_firstboot_pending
+    # This file is created here at inject time and deleted by atlas_firstboot.sh
+    # when it completes, preventing double-runs.
+    log "📋 Creating ODS firstboot gate file..."
+    mkdir -p "$WORK_DIR/rootfs/var/lib/ods"
+    touch "$WORK_DIR/rootfs/var/lib/ods/atlas_firstboot_pending"
+
+    # ─── SAFEGUARD: Disable Armbian first-login (prevents race condition) ──
+    # Armbian's first-login scripts delete /root/.not_logged_in_yet and prompt
+    # for interactive password setup on tty, which blocked our firstboot from
+    # running in v9-1-0-ORIGIN. Masking these services at inject time prevents
+    # the race entirely.
+    log "📋 Disabling Armbian first-login services..."
+
+    # Mask armbian-firstrun (SSH key regeneration + first-run tweaks)
+    ln -sf /dev/null "$WORK_DIR/rootfs/etc/systemd/system/armbian-firstrun.service"
+    log "   ✅ armbian-firstrun.service masked"
+
+    # Remove Armbian's gate file so first-login never triggers on tty
+    rm -f "$WORK_DIR/rootfs/root/.not_logged_in_yet"
+    log "   ✅ Armbian gate file removed"
+
+    # Pre-set root password from secrets (so bypass_firstlogin isn't needed at boot)
+    log "📋 Pre-setting root password..."
+    local ROOT_PW
+    ROOT_PW=$(grep -oP 'ROOT_PASSWORD="\K[^"]+' "$SCRIPT_DIR/atlas_secrets.conf" 2>/dev/null || echo "")
+    if [ -n "$ROOT_PW" ]; then
+        local HASH
+        HASH=$(openssl passwd -6 "$ROOT_PW")
+        sed -i "s|^root:[^:]*:|root:${HASH}:|" "$WORK_DIR/rootfs/etc/shadow"
+        log "   ✅ Root password set from atlas_secrets.conf"
+    else
+        log "   ⚠️  ROOT_PASSWORD not found in secrets — will be set at firstboot"
+    fi
+
     # Patch boot partition cmdline.txt (prevents screen sleep during firstboot)
     log "📋 Patching boot partition cmdline.txt..."
     mkdir -p "$WORK_DIR/boot"
