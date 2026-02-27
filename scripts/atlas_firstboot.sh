@@ -311,6 +311,11 @@ WPAEOF
     systemctl disable dnsmasq 2>/dev/null
     systemctl stop dnsmasq 2>/dev/null
 
+    # Mask wpa_supplicant — it fights hostapd for wlan0 control via D-Bus
+    systemctl stop wpa_supplicant 2>/dev/null
+    systemctl disable wpa_supplicant 2>/dev/null
+    systemctl mask wpa_supplicant 2>/dev/null
+
     # Generate AP SSID from hostname with ODS branding (ALL CAPS to avoid l/I confusion)
     local AP_SSID="ODS-$(hostname 2>/dev/null | tr '[:lower:]' '[:upper:]' || echo 'PLAYER')"
 
@@ -324,7 +329,7 @@ country_code=US
 hw_mode=g
 channel=6
 ieee80211n=1
-wmm_enabled=0
+wmm_enabled=1
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=1
