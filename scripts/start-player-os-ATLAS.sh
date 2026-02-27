@@ -12,6 +12,9 @@ xhost +local: 2>/dev/null || true
 chown -R signage:signage /home/signage/.config/chromium 2>/dev/null
 rm -f /home/signage/.config/chromium/SingletonLock 2>/dev/null
 
+# Start WiFi AP for phone-based network setup (open network)
+sudo /usr/local/bin/ods-setup-ap.sh start 2>/dev/null || true
+
 exec chromium --no-sandbox \
   --app="http://localhost:8080/network_setup.html" \
   --start-maximized \

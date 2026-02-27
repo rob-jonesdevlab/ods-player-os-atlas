@@ -9,6 +9,38 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // ========================================
+// CAPTIVE PORTAL DETECTION
+// ========================================
+// When phones join the AP, they probe these URLs to detect captive portals.
+// We intercept and redirect to setup.html so the browser opens automatically.
+
+// iOS captive portal detection
+app.get('/hotspot-detect.html', (req, res) => {
+    res.redirect('http://192.168.4.1:8080/setup.html');
+});
+
+// Android captive portal detection
+app.get('/generate_204', (req, res) => {
+    res.redirect('http://192.168.4.1:8080/setup.html');
+});
+app.get('/gen_204', (req, res) => {
+    res.redirect('http://192.168.4.1:8080/setup.html');
+});
+
+// Windows captive portal detection
+app.get('/connecttest.txt', (req, res) => {
+    res.redirect('http://192.168.4.1:8080/setup.html');
+});
+app.get('/ncsi.txt', (req, res) => {
+    res.redirect('http://192.168.4.1:8080/setup.html');
+});
+
+// Catch-all for any captive portal probe from unknown OS
+app.get('/redirect', (req, res) => {
+    res.redirect('http://192.168.4.1:8080/setup.html');
+});
+
+// ========================================
 // NETWORK APIs
 // ========================================
 
@@ -79,21 +111,36 @@ app.post('/api/wifi/configure', (req, res) => {
             return res.status(500).json({ error: 'Failed to configure WiFi' });
         }
 
-        exec('sudo wpa_cli -i wlan0 reconfigure', (error) => {
-            if (error) {
-                return res.status(500).json({ error: 'Failed to restart WiFi' });
-            }
-
-            res.json({ success: true });
+        // Stop AP mode first, then switch to client mode
+        exec('sudo /usr/local/bin/ods-setup-ap.sh stop', () => {
+            setTimeout(() => {
+                exec('sudo ip link set wlan0 up && sudo wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf && sleep 2 && sudo wpa_cli -i wlan0 reconfigure', { timeout: 15000 }, (error) => {
+                    if (error) {
+                        return res.status(500).json({ error: 'Failed to connect to WiFi' });
+                    }
+                    res.json({ success: true, message: 'WiFi configured. Connecting...' });
+                });
+            }, 2000);
         });
     });
 });
 
 // Generate QR code
 app.get('/api/qr', async (req, res) => {
-    const setupUrl = `http://${req.hostname}:8080/setup.html`;
-    const qrCode = await QRCode.toDataURL(setupUrl, { width: 400 });
-    res.json({ qrCode });
+    try {
+        // Get SSID from hostapd config
+        const ssid = require('child_process').execSync(
+            '/usr/local/bin/ods-setup-ap.sh ssid 2>/dev/null || echo ODS-Player'
+        ).toString().trim();
+
+        // WIFI: QR format (open network) — phones show "Connect to ODS-DeviceName?"
+        const wifiQR = `WIFI:T:nopass;S:${ssid};;`;
+        const qrCode = await QRCode.toDataURL(wifiQR, { width: 400 });
+        res.json({ qrCode, ssid, setupUrl: 'http://192.168.4.1:8080/setup.html' });
+    } catch (e) {
+        console.error('[QR] Error:', e.message);
+        res.status(500).json({ error: 'Failed to generate QR' });
+    }
 });
 
 // Trigger enrollment — register device with ODS Cloud

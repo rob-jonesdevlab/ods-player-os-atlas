@@ -175,6 +175,8 @@ install_packages() {
         wireless-tools \
         rfkill \
         sudo \
+        hostapd \
+        dnsmasq \
         2>&1 | tee -a "$LOG_FILE"
 
     if command -v git &>/dev/null && command -v node &>/dev/null; then
@@ -281,6 +283,12 @@ signage ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/wpa_supplicant/wpa_supplicant.conf
 signage ALL=(ALL) NOPASSWD: /usr/bin/rm -rf /home/signage/.config/chromium*
 signage ALL=(ALL) NOPASSWD: /usr/bin/rm -f /var/lib/ods/enrollment.flag
 signage ALL=(ALL) NOPASSWD: /usr/local/bin/ods-auth-check.sh *
+signage ALL=(ALL) NOPASSWD: /usr/local/bin/ods-setup-ap.sh *
+signage ALL=(ALL) NOPASSWD: /usr/sbin/wpa_supplicant *
+signage ALL=(ALL) NOPASSWD: /usr/bin/ip addr *
+signage ALL=(ALL) NOPASSWD: /usr/sbin/hostapd *
+signage ALL=(ALL) NOPASSWD: /usr/bin/killall *
+signage ALL=(ALL) NOPASSWD: /usr/sbin/dnsmasq *
 SUDOEOF
     chmod 0440 /etc/sudoers.d/signage
     log "  ✅ signage sudoers created (WiFi, system, admin tools)"
@@ -294,6 +302,46 @@ country=US
 WPAEOF
     chmod 644 /etc/wpa_supplicant/wpa_supplicant.conf
     log "  ✅ wpa_supplicant.conf created"
+
+    # Setup WiFi AP for phone-based network configuration
+    # Disable auto-start (controlled by boot scripts)
+    systemctl unmask hostapd 2>/dev/null
+    systemctl disable hostapd 2>/dev/null
+    systemctl stop hostapd 2>/dev/null
+    systemctl disable dnsmasq 2>/dev/null
+    systemctl stop dnsmasq 2>/dev/null
+
+    # Generate AP SSID from hostname with ODS branding (ALL CAPS to avoid l/I confusion)
+    local AP_SSID="ODS-$(hostname 2>/dev/null | tr '[:lower:]' '[:upper:]' || echo 'PLAYER')"
+
+    mkdir -p /etc/hostapd
+    cat > /etc/hostapd/hostapd-setup.conf << EOF
+interface=wlan0
+driver=nl80211
+ssid=$AP_SSID
+hw_mode=g
+channel=7
+wmm_enabled=0
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=1
+EOF
+
+    cat > /etc/dnsmasq.d/ods-setup.conf << 'DNSEOF'
+interface=wlan0
+bind-interfaces
+listen-address=192.168.4.1
+dhcp-range=192.168.4.2,192.168.4.20,255.255.255.0,24h
+address=/#/192.168.4.1
+port=53
+except-interface=eth0
+except-interface=lo
+DNSEOF
+
+    # Deploy AP management script
+    cp "$REPO_SCRIPTS/ods-setup-ap.sh" /usr/local/bin/ods-setup-ap.sh
+    chmod +x /usr/local/bin/ods-setup-ap.sh
+    log "  ✅ WiFi AP setup configured (SSID: $AP_SSID, open network)"
 
     # Create otter admin user with sudo
     if ! id otter >/dev/null 2>&1; then

@@ -188,8 +188,8 @@
                     <span class="material-symbols-outlined text-primary text-xl">settings</span>
                 </div>
                 <div>
-                    <h1 class="text-sm font-bold text-white">System Config</h1>
-                    <p class="text-[10px] text-slate-400">ODS Player OS</p>
+                    <h1 class="text-base font-bold text-white">System Config</h1>
+                    <p class="text-xs text-slate-300">ODS Player OS</p>
                 </div>
             </div>
         </div>
@@ -198,27 +198,27 @@
                 <button onclick="showSection('network')" id="nav-network"
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent active">
                     <span class="material-symbols-outlined text-lg">wifi</span>
-                    <span class="text-sm font-medium">Network</span>
+                    <span class="text-base font-medium">Network</span>
                 </button>
                 <button onclick="showSection('display')" id="nav-display"
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
                     <span class="material-symbols-outlined text-lg">monitor</span>
-                    <span class="text-sm font-medium">Display</span>
+                    <span class="text-base font-medium">Display</span>
                 </button>
                 <button onclick="showSection('audio')" id="nav-audio"
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
                     <span class="material-symbols-outlined text-lg">volume_up</span>
-                    <span class="text-sm font-medium">Audio</span>
+                    <span class="text-base font-medium">Audio</span>
                 </button>
                 <button onclick="showSection('time')" id="nav-time"
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
                     <span class="material-symbols-outlined text-lg">schedule</span>
-                    <span class="text-sm font-medium">Time & Locale</span>
+                    <span class="text-base font-medium">Time & Locale</span>
                 </button>
                 <button onclick="showSection('player')" id="nav-player"
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
                     <span class="material-symbols-outlined text-lg">tv</span>
-                    <span class="text-sm font-medium">Player</span>
+                    <span class="text-base font-medium">Player</span>
                 </button>
 
                 <div class="border-t border-slate-700 my-2"></div>
@@ -226,23 +226,23 @@
                 <button onclick="showSection('admin')" id="nav-admin"
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent">
                     <span class="material-symbols-outlined text-lg" id="admin-nav-icon">lock</span>
-                    <span class="text-sm font-medium">Admin</span>
+                    <span class="text-base font-medium">Admin</span>
                 </button>
                 <button onclick="showSection('system')" id="nav-system" data-admin-required
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent hidden">
                     <span class="material-symbols-outlined text-lg">info</span>
-                    <span class="text-sm font-medium">System Info</span>
+                    <span class="text-base font-medium">System Info</span>
                 </button>
                 <button onclick="showSection('logs')" id="nav-logs" data-admin-required
                     class="sidebar-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left text-slate-300 hover:bg-slate-700/50 border-l-2 border-transparent hidden">
                     <span class="material-symbols-outlined text-lg">description</span>
-                    <span class="text-sm font-medium">System Logs</span>
+                    <span class="text-base font-medium">System Logs</span>
                 </button>
             </div>
         </div>
         <div class="px-3 py-4 border-t border-slate-700">
             <button onclick="closeConfig()"
-                class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-300 text-sm font-medium transition-colors">
+                class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-white text-base font-medium transition-colors">
                 <span class="material-symbols-outlined text-lg">close</span>
                 Exit Configuration
             </button>
@@ -262,36 +262,36 @@
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-semibold">WiFi Configuration</h3>
                     <div class="flex items-center gap-3">
-                        <span class="text-xs text-slate-400">WiFi</span>
+                        <span class="text-sm text-slate-200">WiFi</span>
                         <div id="wifi-power-toggle" class="toggle-switch" onclick="toggleWiFiPower()"></div>
-                        <span id="wifi-power-label" class="text-xs text-slate-400">Off</span>
+                        <span id="wifi-power-label" class="text-sm text-slate-200">Off</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">SSID (Network Name)</label>
+                        <label class="block text-base font-medium text-slate-200 mb-1.5">SSID (Network Name)</label>
                         <input id="wifi-ssid" type="text" placeholder="Enter or scan for network"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm" />
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-base" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Password</label>
+                        <label class="block text-base font-medium text-slate-200 mb-1.5">Password</label>
                         <input id="wifi-password" type="password" placeholder="Enter password"
                             onkeydown="if(event.key==='Enter'){event.preventDefault();connectWifi();}"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm" />
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-base" />
                     </div>
                 </div>
                 <div class="flex gap-3">
                     <button onclick="scanWiFi()"
-                        class="px-6 py-2.5 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
+                        class="px-6 py-2.5 bg-primary hover:bg-blue-600 rounded-lg text-white text-base font-medium transition-colors flex items-center gap-2">
                         <span class="material-symbols-outlined text-lg">wifi</span>
                         Scan
                     </button>
                     <button onclick="connectWifi()"
-                        class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-sm font-medium transition-colors">
+                        class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white text-base font-medium transition-colors">
                         Connect
                     </button>
                 </div>
-                <div id="wifi-status" class="mt-3 text-sm text-slate-400 hidden"></div>
+                <div id="wifi-status" class="mt-3 text-base text-slate-200 hidden"></div>
             </div>
             <div class="config-card rounded-xl p-6">
                 <h3 class="text-lg font-semibold mb-4">Network Status</h3>
@@ -299,24 +299,24 @@
                     <div class="flex items-center gap-3">
                         <span id="eth-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
                         <div>
-                            <span class="text-sm text-slate-400">Ethernet</span>
-                            <p id="eth-status" class="text-sm font-medium stat-value">Checking...</p>
+                            <span class="text-base text-slate-200">Ethernet</span>
+                            <p id="eth-status" class="text-base font-medium stat-value">Checking...</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
                         <span id="wifi-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
                         <div>
-                            <span class="text-sm text-slate-400">WiFi</span>
-                            <p id="wifi-conn-status" class="text-sm font-medium stat-value">Checking...</p>
+                            <span class="text-base text-slate-200">WiFi</span>
+                            <p id="wifi-conn-status" class="text-base font-medium stat-value">Checking...</p>
                         </div>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">IP Address</span>
-                        <p id="ip-address" class="text-sm font-medium stat-value">—</p>
+                        <span class="text-base text-slate-200">IP Address</span>
+                        <p id="ip-address" class="text-base font-medium stat-value">—</p>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">DNS</span>
-                        <p id="dns-info" class="text-sm font-medium stat-value">—</p>
+                        <span class="text-base text-slate-200">DNS</span>
+                        <p id="dns-info" class="text-base font-medium stat-value">—</p>
                     </div>
                 </div>
             </div>
@@ -331,16 +331,16 @@
             <div class="config-card rounded-xl p-6">
                 <div class="space-y-6">
                     <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Resolution</label>
+                        <label class="block text-base font-medium text-slate-200 mb-1.5">Resolution</label>
                         <select id="display-resolution"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-primary outline-none text-sm">
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-primary outline-none text-base">
                             <option value="">Loading available modes...</option>
                         </select>
-                        <p class="text-xs text-slate-500 mt-1">Only modes supported by the connected display are shown.
+                        <p class="text-sm text-slate-300 mt-1">Only modes supported by the connected display are shown.
                         </p>
                     </div>
                     <button onclick="applyResolution()"
-                        class="px-6 py-2.5 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
+                        class="px-6 py-2.5 bg-primary hover:bg-blue-600 rounded-lg text-white text-base font-medium transition-colors flex items-center gap-2">
                         <span class="material-symbols-outlined text-lg">check</span>
                         Apply Resolution
                     </button>
@@ -357,15 +357,15 @@
             <div class="config-card rounded-xl p-6">
                 <div class="space-y-6">
                     <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-2">Master Volume</label>
+                        <label class="block text-base font-medium text-slate-200 mb-2">Master Volume</label>
                         <input id="audio-volume" type="range" min="0" max="100" value="75"
                             class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary" />
-                        <span id="audio-volume-label" class="text-sm text-slate-400 mt-1 block">75%</span>
+                        <span id="audio-volume-label" class="text-base text-slate-200 mt-1 block">75%</span>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Output Device</label>
+                        <label class="block text-base font-medium text-slate-200 mb-1.5">Output Device</label>
                         <select id="audio-output"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-primary outline-none text-sm">
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-primary outline-none text-base">
                             <option>HDMI Audio</option>
                             <option>3.5mm Jack</option>
                         </select>
@@ -383,25 +383,25 @@
             <div class="config-card rounded-xl p-6">
                 <div class="grid grid-cols-2 gap-6">
                     <div>
-                        <span class="text-sm text-slate-400">Current Time</span>
+                        <span class="text-base text-slate-200">Current Time</span>
                         <p id="time-current" class="text-lg font-semibold stat-value">—</p>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">NTP Sync</span>
+                        <span class="text-base text-slate-200">NTP Sync</span>
                         <div class="flex items-center gap-2 mt-1">
                             <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
                             <span class="text-sm">Synchronized</span>
                         </div>
                         <button onclick="updateTimezone()"
-                            class="mt-3 px-5 py-2 bg-primary hover:bg-blue-600 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
+                            class="mt-3 px-5 py-2 bg-primary hover:bg-blue-600 rounded-lg text-white text-base font-medium transition-colors flex items-center gap-2">
                             <span class="material-symbols-outlined text-lg">save</span>
                             Update
                         </button>
                     </div>
                     <div class="col-span-2">
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Timezone</label>
+                        <label class="block text-base font-medium text-slate-200 mb-1.5">Timezone</label>
                         <select id="time-timezone"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-primary outline-none text-sm">
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white focus:border-primary outline-none text-base">
                             <option value="America/Los_Angeles" selected>Pacific (PT)</option>
                             <option value="America/Denver">Mountain (MT)</option>
                             <option value="America/Chicago">Central (CT)</option>
@@ -424,12 +424,12 @@
             <div class="config-card rounded-xl p-6 mb-4">
                 <div class="grid grid-cols-2 gap-6">
                     <div>
-                        <span class="text-sm text-slate-400">Device Name</span>
-                        <p id="player-device-name" class="text-sm font-medium stat-value mt-1">—</p>
+                        <span class="text-base text-slate-200">Device Name</span>
+                        <p id="player-device-name" class="text-base font-medium stat-value mt-1">—</p>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">Player Version</span>
-                        <p id="player-version" class="text-sm font-medium stat-value mt-1">—</p>
+                        <span class="text-base text-slate-200">Player Version</span>
+                        <p id="player-version" class="text-base font-medium stat-value mt-1">—</p>
                     </div>
                 </div>
             </div>
@@ -439,10 +439,10 @@
                         <span class="material-symbols-outlined text-amber-400">restart_alt</span>
                         Reboot Device
                     </h3>
-                    <p class="text-sm text-slate-400 mb-4">Restart the player system.</p>
+                    <p class="text-base text-slate-200 mb-4">Restart the player system.</p>
                     <button
                         onclick="confirmAction('Reboot Device', 'The player will restart and reload all services.', 'restart_alt', () => systemAction('reboot'))"
-                        class="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
+                        class="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 rounded-lg text-white text-base font-medium transition-colors flex items-center gap-2">
                         <span class="material-symbols-outlined text-lg">restart_alt</span>
                         Reboot
                     </button>
@@ -452,10 +452,10 @@
                         <span class="material-symbols-outlined text-red-400">link_off</span>
                         Unpair Device
                     </h3>
-                    <p class="text-sm text-slate-400 mb-4">Remove account pairing.</p>
+                    <p class="text-base text-slate-200 mb-4">Remove account pairing.</p>
                     <button
                         onclick="confirmAction('Unpair Device', 'This device will be unpaired and will need to be re-paired.', 'link_off', unpairDevice)"
-                        class="px-6 py-2.5 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium transition-colors flex items-center gap-2">
+                        class="px-6 py-2.5 bg-red-600 hover:bg-red-500 rounded-lg text-white text-base font-medium transition-colors flex items-center gap-2">
                         <span class="material-symbols-outlined text-lg">link_off</span>
                         Unpair
                     </button>
@@ -472,38 +472,38 @@
             <div class="config-card rounded-xl p-6 mb-4">
                 <div class="grid grid-cols-3 gap-6">
                     <div>
-                        <span class="text-sm text-slate-400">Device UUID</span>
+                        <span class="text-base text-slate-200">Device UUID</span>
                         <p id="sys-device-uuid" class="text-sm font-semibold stat-value font-mono">—</p>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">Player Version</span>
+                        <span class="text-base text-slate-200">Player Version</span>
                         <p id="sys-full-version" class="text-lg font-semibold stat-value">—</p>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">Hostname</span>
+                        <span class="text-base text-slate-200">Hostname</span>
                         <p id="sys-hostname" class="text-lg font-semibold stat-value">—</p>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">CPU Temperature</span>
+                        <span class="text-base text-slate-200">CPU Temperature</span>
                         <p id="sys-cpu-temp" class="text-lg font-semibold stat-value">—</p>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">Uptime</span>
+                        <span class="text-base text-slate-200">Uptime</span>
                         <p id="sys-uptime" class="text-lg font-semibold stat-value">—</p>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">OS Version</span>
+                        <span class="text-base text-slate-200">OS Version</span>
                         <p id="sys-os" class="text-lg font-semibold stat-value">—</p>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">RAM Usage</span>
+                        <span class="text-base text-slate-200">RAM Usage</span>
                         <p id="sys-ram" class="text-lg font-semibold stat-value">—</p>
                         <div class="w-full bg-slate-700 rounded-full h-2 mt-1.5">
                             <div id="sys-ram-bar" class="bg-primary h-2 rounded-full" style="width: 0%"></div>
                         </div>
                     </div>
                     <div>
-                        <span class="text-sm text-slate-400">Storage (Root / Disk)</span>
+                        <span class="text-base text-slate-200">Storage (Root / Disk)</span>
                         <p id="sys-storage" class="text-lg font-semibold stat-value">—</p>
                         <div class="w-full bg-slate-700 rounded-full h-2 mt-1.5">
                             <div id="sys-storage-bar" class="bg-emerald-500 h-2 rounded-full" style="width: 0%"></div>
@@ -514,7 +514,7 @@
             <div class="config-card rounded-xl p-6">
                 <h3 class="text-lg font-semibold mb-4">Network Interfaces</h3>
                 <div id="sys-network-interfaces" class="space-y-3">
-                    <p class="text-sm text-slate-400">Loading...</p>
+                    <p class="text-base text-slate-200">Loading...</p>
                 </div>
             </div>
         </section>
@@ -561,18 +561,18 @@
                     <span class="material-symbols-outlined text-amber-400">lock</span>
                     Admin Authentication Required
                 </h3>
-                <p class="text-sm text-slate-400 mb-4">Enter admin credentials to unlock system tools.</p>
+                <p class="text-base text-slate-200 mb-4">Enter admin credentials to unlock system tools.</p>
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Username</label>
+                        <label class="block text-base font-medium text-slate-200 mb-1.5">Username</label>
                         <input id="admin-user" type="text" placeholder="Username"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm" />
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-base" />
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-400 mb-1.5">Password</label>
+                        <label class="block text-base font-medium text-slate-200 mb-1.5">Password</label>
                         <input id="admin-pass" type="password" placeholder="Password"
                             onkeydown="if(event.key==='Enter'){event.preventDefault();adminLogin();}"
-                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm" />
+                            class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-base" />
                     </div>
                 </div>
                 <button onclick="adminLogin()"
@@ -580,7 +580,7 @@
                     <span class="material-symbols-outlined text-lg">login</span>
                     Authenticate
                 </button>
-                <div id="admin-login-status" class="mt-3 text-sm hidden"></div>
+                <div id="admin-login-status" class="mt-3 text-base hidden"></div>
             </div>
 
             <div id="admin-tools" class="hidden">
@@ -588,7 +588,7 @@
                     <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
                         <span class="material-symbols-outlined text-emerald-400">lock_open</span>
                         Admin Tools
-                        <span class="text-xs text-slate-500 ml-auto">Session active</span>
+                        <span class="text-sm text-slate-300 ml-auto">Session active</span>
                     </h3>
                     <div class="grid grid-cols-2 gap-4">
                         <!-- Row 1: Launch Terminal | SSH Access -->
@@ -596,15 +596,15 @@
                             class="config-card rounded-xl p-5 hover:border-emerald-500/50 transition-colors cursor-pointer text-left">
                             <span class="material-symbols-outlined text-2xl text-emerald-400 mb-2">terminal</span>
                             <h4 class="font-semibold mb-1">Launch Terminal</h4>
-                            <p class="text-xs text-slate-400">Open admin terminal overlay</p>
+                            <p class="text-sm text-slate-300">Open admin terminal overlay</p>
                         </button>
                         <div class="config-card rounded-xl p-5">
                             <span class="material-symbols-outlined text-2xl text-cyan-400 mb-2">lan</span>
                             <h4 class="font-semibold mb-1">SSH Access</h4>
-                            <p class="text-xs text-slate-400 mb-3">Allow remote SSH connections</p>
+                            <p class="text-sm text-slate-300 mb-3">Allow remote SSH connections</p>
                             <div class="flex items-center gap-3">
                                 <div id="ssh-toggle" class="toggle-switch active" onclick="toggleSSH()"></div>
-                                <span id="ssh-label" class="text-xs text-slate-400">Enabled</span>
+                                <span id="ssh-label" class="text-sm text-slate-300">Enabled</span>
                             </div>
                         </div>
                         <!-- Row 2: Clear Cache | Restart Services -->
@@ -613,13 +613,13 @@
                             class="config-card rounded-xl p-5 hover:border-blue-500/50 transition-colors cursor-pointer text-left">
                             <span class="material-symbols-outlined text-2xl text-blue-400 mb-2">delete_sweep</span>
                             <h4 class="font-semibold mb-1">Clear Cache</h4>
-                            <p class="text-xs text-slate-400">Clear browser cache and data</p>
+                            <p class="text-sm text-slate-300">Clear browser cache and data</p>
                         </button>
                         <button onclick="adminAction('restart-services')"
                             class="config-card rounded-xl p-5 hover:border-amber-500/50 transition-colors cursor-pointer text-left">
                             <span class="material-symbols-outlined text-2xl text-amber-400 mb-2">refresh</span>
                             <h4 class="font-semibold mb-1">Restart Services</h4>
-                            <p class="text-xs text-slate-400">Restart all ODS services</p>
+                            <p class="text-sm text-slate-300">Restart all ODS services</p>
                         </button>
                         <!-- Row 3: Shutdown | Factory Reset -->
                         <button
@@ -627,7 +627,7 @@
                             class="config-card rounded-xl p-5 hover:border-red-500/50 transition-colors cursor-pointer text-left">
                             <span class="material-symbols-outlined text-2xl text-red-400 mb-2">power_settings_new</span>
                             <h4 class="font-semibold mb-1">Shutdown</h4>
-                            <p class="text-xs text-slate-400">Power off the player</p>
+                            <p class="text-sm text-slate-300">Power off the player</p>
                         </button>
                         <button
                             onclick="confirmAction('Factory Reset', 'This will erase all data and reset to factory defaults. Cannot be undone!', 'settings_backup_restore', () => systemAction('factory-reset'))"
@@ -635,20 +635,20 @@
                             <span
                                 class="material-symbols-outlined text-2xl text-red-400 mb-2">settings_backup_restore</span>
                             <h4 class="font-semibold mb-1">Factory Reset</h4>
-                            <p class="text-xs text-slate-400">Reset to factory defaults</p>
+                            <p class="text-sm text-slate-300">Reset to factory defaults</p>
                         </button>
                         <!-- Row 4: Log Out | Update Password -->
                         <button onclick="adminLogout()"
                             class="config-card rounded-xl p-5 hover:border-slate-500/50 transition-colors cursor-pointer text-left">
                             <span class="material-symbols-outlined text-2xl text-slate-400 mb-2">logout</span>
                             <h4 class="font-semibold mb-1">Log Out</h4>
-                            <p class="text-xs text-slate-400">End admin session</p>
+                            <p class="text-sm text-slate-300">End admin session</p>
                         </button>
                         <button onclick="showPasswordModal()"
                             class="config-card rounded-xl p-5 hover:border-purple-500/50 transition-colors cursor-pointer text-left">
                             <span class="material-symbols-outlined text-2xl text-purple-400 mb-2">password</span>
                             <h4 class="font-semibold mb-1">Update Password</h4>
-                            <p class="text-xs text-slate-400">Change admin password</p>
+                            <p class="text-sm text-slate-300">Change admin password</p>
                         </button>
                     </div>
                 </div>

@@ -111,27 +111,28 @@
     </header>
 
     <!-- Loading State -->
-    <main id="loadingState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-32 z-10">
+    <main id="loadingState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-44 z-10">
         <div class="flex flex-col items-center gap-4">
             <div class="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent"></div>
-            <p class="text-gray-900 text-lg">Initializing device...</p>
+            <p class="text-xl" style="color: #1a1a2e;">Initializing device...</p>
         </div>
     </main>
 
     <!-- Pairing State -->
-    <main id="pairingState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-32 z-10"
+    <main id="pairingState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-44 z-10"
         style="display: none;">
         <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl">
             <!-- QR Code Section -->
-            <div id="qrcodeContainer" class="bg-white p-4 rounded-xl shadow-lg mb-10">
+            <div id="qrcodeContainer" class="bg-white p-3 rounded-xl shadow-lg mb-10">
                 <div id="qrcode"></div>
             </div>
 
             <!-- Pairing Code -->
             <div class="flex flex-col items-center mb-10">
-                <span class="text-gray-900 text-sm font-medium mb-2 tracking-wide uppercase">Pairing Code</span>
-                <h2 id="pairingCodeDisplay"
-                    class="font-mono text-[72px] leading-none font-bold text-gray-900 tracking-wider">
+                <span class="text-lg font-semibold mb-2 tracking-wide uppercase" style="color: #1a1a2e;">Pairing
+                    Code</span>
+                <h2 id="pairingCodeDisplay" class="font-mono text-[72px] leading-none font-bold tracking-wider"
+                    style="color: #1a1a2e;">
                     --- ---
                 </h2>
             </div>
@@ -141,25 +142,25 @@
                 <div class="space-y-4">
                     <div class="flex items-start gap-4 group">
                         <div
-                            class="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm border border-primary/30">
+                            class="flex-shrink-0 w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-base border border-primary/30">
                             1</div>
-                        <p class="text-gray-900 text-lg leading-snug">
+                        <p class="text-xl leading-snug" style="color: #1a1a2e;">
                             Scan the QR code or visit <span class="text-primary font-medium">ods-cloud.com/pair</span>
                         </p>
                     </div>
                     <div class="flex items-start gap-4 group">
-                        <div
-                            class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 font-bold text-sm border border-gray-200 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-base border border-gray-200 group-hover:bg-primary/10 group-hover:text-primary transition-colors"
+                            style="color: #1a1a2e;">
                             2</div>
-                        <p class="text-gray-900 group-hover:text-gray-900 transition-colors text-lg leading-snug">
+                        <p class="text-xl leading-snug" style="color: #1a1a2e;">
                             Log in to your account
                         </p>
                     </div>
                     <div class="flex items-start gap-4 group">
-                        <div
-                            class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 font-bold text-sm border border-gray-200 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-base border border-gray-200 group-hover:bg-primary/10 group-hover:text-primary transition-colors"
+                            style="color: #1a1a2e;">
                             3</div>
-                        <p class="text-gray-900 group-hover:text-gray-900 transition-colors text-lg leading-snug">
+                        <p class="text-xl leading-snug" style="color: #1a1a2e;">
                             Enter the code above to register this screen
                         </p>
                     </div>
@@ -169,7 +170,7 @@
     </main>
 
     <!-- Error State -->
-    <main id="errorState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-32 z-10"
+    <main id="errorState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-44 z-10"
         style="display: none;">
         <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl">
             <div class="flex flex-col items-center gap-6 text-center">
@@ -178,14 +179,13 @@
                     <span class="material-symbols-outlined text-5xl text-red-500">error</span>
                 </div>
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Connection Error</h2>
-                    <p id="errorMessage" class="text-gray-900 max-w-md"
-                        style="font-size: clamp(0.75rem, 2.5vw, 1rem); line-height: 1.4;">Unable to connect to pairing
+                    <h2 class="text-3xl font-bold mb-2" style="color: #1a1a2e;">Connection Error</h2>
+                    <p id="errorMessage" class="max-w-md text-lg" style="color: #1a1a2e; line-height: 1.4;">Unable to
+                        connect to pairing
                         server at
-                        <span class="font-mono bg-gray-100 px-2 py-1 rounded"
-                            style="font-size: clamp(0.7rem, 2.2vw, 0.875rem);">api.ods-cloud.com</span>
+                        <span class="font-mono bg-gray-100 px-2 py-1 rounded text-base">api.ods-cloud.com</span>
                     </p>
-                    <p class="text-gray-900 mt-2" style="font-size: clamp(0.7rem, 2.2vw, 0.875rem); line-height: 1.4;">
+                    <p class="mt-2 text-base" style="color: #1a1a2e; opacity: 0.7; line-height: 1.4;">
                         Please check your network connection and ensure the server is reachable.</p>
                 </div>
                 <!-- Retry Button -->
@@ -201,7 +201,7 @@
     </main>
 
     <!-- Cooldown State -->
-    <main id="cooldownState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-32 z-10"
+    <main id="cooldownState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-44 z-10"
         style="display: none;">
         <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl">
             <div class="flex flex-col items-center gap-6 text-center">
@@ -210,8 +210,8 @@
                     <span class="material-symbols-outlined text-5xl text-amber-500">schedule</span>
                 </div>
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900 mb-2">Rate Limit Reached</h2>
-                    <p class="text-gray-900 max-w-md" style="font-size: clamp(0.75rem, 2.5vw, 1rem); line-height: 1.4;">
+                    <h2 class="text-3xl font-bold mb-2" style="color: #1a1a2e;">Rate Limit Reached</h2>
+                    <p class="max-w-md text-lg" style="color: #1a1a2e; line-height: 1.4;">
                         Too many pairing attempts. Please wait before trying again.
                     </p>
                 </div>
@@ -219,7 +219,7 @@
                 <div class="flex flex-col items-center gap-2">
                     <span class="font-mono text-[56px] leading-none font-bold text-amber-600"
                         id="cooldownTimer">10:00</span>
-                    <span class="text-gray-900 text-sm">until next pairing attempt</span>
+                    <span class="text-base" style="color: #1a1a2e;">until next pairing attempt</span>
                 </div>
                 <div class="w-full max-w-xs bg-gray-200 rounded-full h-2 mt-2">
                     <div id="cooldownProgress" class="bg-amber-500 h-2 rounded-full" style="width: 100%"></div>

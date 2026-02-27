@@ -132,10 +132,8 @@
 
                 if (data.success) {
                     message.className = 'success';
-                    message.textContent = '✅ WiFi configured! Connecting...';
-                    setTimeout(() => {
-                        window.location.href = '/qr.html';
-                    }, 2000);
+                    message.textContent = '✅ WiFi configured! The player is connecting to your network. You can close this page.';
+                    submitBtn.textContent = 'Done';
                 } else {
                     throw new Error(data.error || 'Configuration failed');
                 }
