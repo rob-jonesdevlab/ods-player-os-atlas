@@ -804,11 +804,8 @@ WORDS=(
 )
 
 get_mac_bytes() {
-    # Get primary interface MAC, return last 3 bytes as decimal
-    local mac=$(ip link show 2>/dev/null | grep -A1 'state UP' | grep ether | head -1 | awk '{print $2}')
-    if [ -z "$mac" ]; then
-        mac=$(cat /sys/class/net/eth0/address 2>/dev/null || cat /sys/class/net/end0/address 2>/dev/null || echo "00:00:00:00:00:00")
-    fi
+    # ALWAYS use ethernet MAC for consistent hostname (not wlan0 which differs in AP mode)
+    local mac=$(cat /sys/class/net/end0/address 2>/dev/null || cat /sys/class/net/eth0/address 2>/dev/null || echo "00:00:00:00:00:00")
     # Take last 3 bytes
     local b1=$(echo "$mac" | cut -d: -f4)
     local b2=$(echo "$mac" | cut -d: -f5)

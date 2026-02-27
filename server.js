@@ -322,7 +322,7 @@ app.get('/api/system/info', (req, res) => {
         display_resolution: "DISPLAY=:0 xrandr 2>/dev/null | grep '[*]' | head -1 | awk '{print $1}'",
         display_scale: "echo $ODS_SCALE",
         disk_total: "lsblk -dn -o SIZE /dev/mmcblk0 2>/dev/null || echo '—'",
-        device_name: '/usr/local/bin/ods-hostname.sh generate 2>/dev/null || hostname'
+        device_name: 'hostname 2>/dev/null || echo unknown'
     };
 
     let completed = 0;
@@ -739,7 +739,7 @@ app.get('/api/admin/services', requireAdmin, (req, res) => {
 
 app.get('/api/device/info', (req, res) => {
     const commands = {
-        three_word_name: '/usr/local/bin/ods-hostname.sh generate 2>/dev/null || echo unknown',
+        three_word_name: 'hostname 2>/dev/null || echo unknown',
         mac_address: "ip link show 2>/dev/null | grep -A1 'state UP' | grep ether | head -1 | awk '{print $2}' || echo --",
         connection_method: "ip route get 8.8.8.8 2>/dev/null | head -1 | sed -n 's/.*dev \\([^ ]*\\).*/\\1/p' || echo --",
         ssid: "iwgetid -r 2>/dev/null || echo ''",
