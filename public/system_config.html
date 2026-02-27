@@ -294,22 +294,46 @@
                 <div id="wifi-status" class="mt-3 text-base text-slate-200 hidden"></div>
             </div>
             <div class="config-card rounded-xl p-6">
-                <h3 class="text-lg font-semibold mb-4">Network Status</h3>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Network Status</h3>
+                    <span class="text-sm text-slate-300" id="net-refresh-label">Auto-refreshing</span>
+                </div>
+                <!-- Ethernet Row -->
+                <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30 mb-3">
+                    <div class="flex items-center gap-3">
+                        <span id="eth-indicator"
+                            class="w-3 h-3 rounded-full bg-slate-500 ring-2 ring-slate-500/30"></span>
+                        <div>
+                            <span class="text-base font-medium text-white">Ethernet</span>
+                            <p id="eth-status" class="text-sm text-slate-300">Checking...</p>
+                            <p id="eth-role" class="text-xs text-slate-400 mt-0.5"></p>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="default-network" value="ethernet" id="default-eth"
+                            class="accent-primary w-4 h-4" onchange="setDefaultNetwork('ethernet')">
+                        <span class="text-sm text-slate-200">Default</span>
+                    </label>
+                </div>
+                <!-- WiFi Row -->
+                <div class="flex items-center justify-between p-3 rounded-lg bg-slate-700/30 mb-4">
+                    <div class="flex items-center gap-3">
+                        <span id="wifi-indicator"
+                            class="w-3 h-3 rounded-full bg-slate-500 ring-2 ring-slate-500/30"></span>
+                        <div>
+                            <span class="text-base font-medium text-white">WiFi</span>
+                            <p id="wifi-conn-status" class="text-sm text-slate-300">Checking...</p>
+                            <p id="wifi-role" class="text-xs text-slate-400 mt-0.5"></p>
+                        </div>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" name="default-network" value="wifi" id="default-wifi"
+                            class="accent-primary w-4 h-4" onchange="setDefaultNetwork('wifi')">
+                        <span class="text-sm text-slate-200">Default</span>
+                    </label>
+                </div>
+                <!-- IP / DNS row -->
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="flex items-center gap-3">
-                        <span id="eth-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
-                        <div>
-                            <span class="text-base text-slate-200">Ethernet</span>
-                            <p id="eth-status" class="text-base font-medium stat-value">Checking...</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span id="wifi-indicator" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
-                        <div>
-                            <span class="text-base text-slate-200">WiFi</span>
-                            <p id="wifi-conn-status" class="text-base font-medium stat-value">Checking...</p>
-                        </div>
-                    </div>
                     <div>
                         <span class="text-base text-slate-200">IP Address</span>
                         <p id="ip-address" class="text-base font-medium stat-value">—</p>
@@ -803,16 +827,63 @@
         }
 
         // ========================================
-        // NETWORK STATUS
+        // NETWORK STATUS (3-state: green=primary, blue=standby, yellow=disconnected)
         // ========================================
+        let defaultNetwork = localStorage.getItem('ods_default_network') || 'ethernet';
+
+        function setDefaultNetwork(type) {
+            defaultNetwork = type;
+            localStorage.setItem('ods_default_network', type);
+            document.getElementById('default-eth').checked = (type === 'ethernet');
+            document.getElementById('default-wifi').checked = (type === 'wifi');
+            refreshNetworkStatus();
+        }
+
+        // Initialize default radio on load
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('default-eth').checked = (defaultNetwork === 'ethernet');
+            document.getElementById('default-wifi').checked = (defaultNetwork === 'wifi');
+        });
+
+        function getIndicatorClasses(connected, isPrimary) {
+            if (!connected) return 'w-3 h-3 rounded-full bg-amber-500 ring-2 ring-amber-500/30';
+            if (isPrimary) return 'w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-emerald-500/30';
+            return 'w-3 h-3 rounded-full bg-blue-500 ring-2 ring-blue-500/30';
+        }
+
+        function getRoleText(connected, isPrimary) {
+            if (!connected) return 'Disconnected';
+            return isPrimary ? '● Primary' : '● Standby';
+        }
+
+        function getRoleColor(connected, isPrimary) {
+            if (!connected) return 'color: #f59e0b';  // amber
+            return isPrimary ? 'color: #10b981' : 'color: #3b82f6';  // green : blue
+        }
+
         async function refreshNetworkStatus() {
             try {
                 const res = await fetch('/api/status');
                 const data = await res.json();
-                document.getElementById('eth-status').textContent = data.ethernet_connected ? 'Connected' : 'Disconnected';
-                document.getElementById('eth-indicator').className = 'w-2.5 h-2.5 rounded-full ' + (data.ethernet_connected ? 'bg-emerald-500' : 'bg-slate-500');
-                document.getElementById('wifi-conn-status').textContent = data.wifi_connected ? (data.ssid || 'Connected') : 'Disconnected';
-                document.getElementById('wifi-indicator').className = 'w-2.5 h-2.5 rounded-full ' + (data.wifi_connected ? 'bg-emerald-500' : 'bg-slate-500');
+
+                const ethConnected = !!data.ethernet_connected;
+                const wifiConnected = !!data.wifi_connected;
+                const ethIsPrimary = (defaultNetwork === 'ethernet');
+                const wifiIsPrimary = (defaultNetwork === 'wifi');
+
+                // Ethernet
+                document.getElementById('eth-status').textContent = ethConnected ? 'Connected' : 'Disconnected';
+                document.getElementById('eth-indicator').className = getIndicatorClasses(ethConnected, ethIsPrimary);
+                const ethRole = document.getElementById('eth-role');
+                ethRole.textContent = getRoleText(ethConnected, ethIsPrimary);
+                ethRole.style.cssText = getRoleColor(ethConnected, ethIsPrimary);
+
+                // WiFi
+                document.getElementById('wifi-conn-status').textContent = wifiConnected ? (data.ssid || 'Connected') : 'Disconnected';
+                document.getElementById('wifi-indicator').className = getIndicatorClasses(wifiConnected, wifiIsPrimary);
+                const wifiRole = document.getElementById('wifi-role');
+                wifiRole.textContent = getRoleText(wifiConnected, wifiIsPrimary);
+                wifiRole.style.cssText = getRoleColor(wifiConnected, wifiIsPrimary);
             } catch (e) { console.error('Network status error:', e); }
         }
 
