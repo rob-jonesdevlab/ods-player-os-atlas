@@ -123,8 +123,8 @@ app.post('/api/enroll', async (req, res) => {
         }
 
         // Call ODS Cloud pairing API
-        const ODS_CLOUD_URL = process.env.ODS_CLOUD_URL || 'http://209.38.118.127:3001';
-        const pairingRes = await fetch(`${ODS_CLOUD_URL}/api/pairing/generate`, {
+        const ODS_SERVER_URL = process.env.ODS_SERVER_URL || 'https://api.ods-cloud.com';
+        const pairingRes = await fetch(`${ODS_SERVER_URL}/api/pairing/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ cpu_serial: cpuSerial, device_uuid: deviceUuid })

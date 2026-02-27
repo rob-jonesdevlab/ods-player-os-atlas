@@ -182,7 +182,7 @@
 
         async function pollPairingStatus(deviceUuid) {
             try {
-                const ODS_CLOUD = 'http://209.38.118.127:3001';
+                const ODS_CLOUD = 'https://api.ods-cloud.com';
                 const res = await fetch(`${ODS_CLOUD}/api/pairing/status/${deviceUuid}`);
                 const data = await res.json();
 

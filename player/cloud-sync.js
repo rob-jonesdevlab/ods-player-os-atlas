@@ -120,7 +120,7 @@ async function doSync() {
     const enrollment = getEnrollmentInfo();
     if (!enrollment) return;
 
-    const serverUrl = process.env.ODS_CLOUD_URL || 'http://209.38.118.127:3001';
+    const serverUrl = process.env.ODS_SERVER_URL || 'https://api.ods-cloud.com';
 
     // Use system token for device API calls (no user JWT on device)
     const token = process.env.ODS_DEVICE_TOKEN || 'system';
@@ -185,7 +185,7 @@ function start(options = {}) {
         return;
     }
 
-    const serverUrl = process.env.ODS_CLOUD_URL || 'http://209.38.118.127:3001';
+    const serverUrl = process.env.ODS_SERVER_URL || 'https://api.ods-cloud.com';
     const cpuSerial = getCpuSerial();
 
     console.log(`[CloudSync] Connecting to ${serverUrl}...`);
