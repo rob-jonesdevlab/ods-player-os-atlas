@@ -224,8 +224,8 @@ app.get('/api/qr', async (req, res) => {
             '/usr/local/bin/ods-setup-ap.sh ssid 2>/dev/null || echo ODS-Player'
         ).toString().trim();
 
-        // WIFI: QR format (open network) — phones show "Connect to ODS-DeviceName?"
-        const wifiQR = `WIFI:T:nopass;S:${ssid};;`;
+        // WIFI: QR format (open hidden network) — H:true tells phone the SSID is hidden
+        const wifiQR = `WIFI:T:nopass;S:${ssid};H:true;;`;
         const qrCode = await QRCode.toDataURL(wifiQR, { width: 400 });
         res.json({ qrCode, ssid, setupUrl: 'http://192.168.4.1:8080/setup.html' });
     } catch (e) {
@@ -824,12 +824,25 @@ app.use('/cache', express.static(cacheManager.GOOD_CACHE_DIR));
 // START SERVER
 // ========================================
 app.listen(PORT, () => {
-    console.log(`[SETUP] ODS Player OS Atlas server running on port ${PORT}`);
+    console.log(`[SETUP] ODS Player OS server running on port ${PORT}`);
 
     // Start cloud sync (WebSocket + config polling)
     cloudSync.start({
         onContentReady: () => {
             console.log('[CloudSync] 🎬 Content ready — renderer will pick up on next poll');
+        }
+    });
+
+    // Also listen on port 80 — iOS captive portal detection checks port 80
+    // Without this, the phone connects to AP but immediately disassociates
+    const http = require('http');
+    http.createServer(app).listen(80, () => {
+        console.log('[SETUP] Captive portal listener on port 80 (for iOS/Android)');
+    }).on('error', (err) => {
+        if (err.code === 'EACCES') {
+            console.log('[SETUP] Port 80 requires root — use: sudo setcap cap_net_bind_service=+ep $(which node)');
+        } else {
+            console.log('[SETUP] Port 80 listener error:', err.message);
         }
     });
 
