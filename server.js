@@ -545,11 +545,17 @@ app.post('/api/wifi/toggle', (req, res) => {
     });
 });
 
-// Get WiFi state
+// Get WiFi state (client mode, not AP mode)
 app.get('/api/wifi/state', (req, res) => {
-    exec("ip link show wlan0 2>/dev/null | head -1", { timeout: 3000 }, (error, stdout) => {
-        const up = stdout && stdout.includes('UP');
-        res.json({ enabled: up });
+    // If hostapd is running, wlan0 is in AP mode — WiFi client is off
+    exec("pgrep -x hostapd", { timeout: 2000 }, (apErr) => {
+        if (!apErr) {
+            return res.json({ enabled: false, ap_mode: true });
+        }
+        exec("ip link show wlan0 2>/dev/null | head -1", { timeout: 3000 }, (error, stdout) => {
+            const up = stdout && stdout.includes('UP');
+            res.json({ enabled: up, ap_mode: false });
+        });
     });
 });
 
