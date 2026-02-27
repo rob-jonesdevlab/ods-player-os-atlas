@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>ODS TV Setup - Network Configuration</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#3c83f6",
+                        "background-light": "#f5f7f8",
+                        "background-dark": "#101722",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    backgroundImage: {
+                        'ods-gradient': 'radial-gradient(circle at 50% 0%, #2a3c55 0%, #101722 70%)',
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen flex flex-col overflow-hidden selection:bg-primary selection:text-white">
+    <!-- Top Navigation / Status Bar -->
+    <header class="absolute top-0 w-full z-10 flex items-center justify-between px-10 py-6">
+        <div class="flex items-center gap-3">
+            <div
+                class="flex items-center justify-center size-10 rounded-full bg-slate-800/50 backdrop-blur-md border border-slate-700">
+                <span class="material-symbols-outlined text-white text-[24px]">connected_tv</span>
+            </div>
+            <h2 class="text-white text-xl font-bold tracking-tight opacity-90">ODS Player Setup</h2>
+        </div>
+        <div class="flex items-center gap-6">
+            <div
+                class="flex items-center gap-2 px-4 py-2 bg-slate-800/50 backdrop-blur-md rounded-full border border-slate-700">
+                <span class="material-symbols-outlined text-emerald-400 text-[20px]">wifi</span>
+                <span class="text-sm font-medium text-slate-300">Ready to pair</span>
+            </div>
+            <div
+                class="size-10 rounded-full bg-slate-700/50 backdrop-blur-md border border-slate-600 flex items-center justify-center text-slate-400 font-bold text-xs">
+                V3
+            </div>
+        </div>
+    </header>
+    <!-- Main Content Area -->
+    <main class="relative flex-1 flex items-center justify-center w-full h-full p-8 bg-ods-gradient">
+        <!-- Glass Card Container -->
+        <div
+            class="relative w-full max-w-5xl bg-slate-900/40 dark:bg-slate-800/20 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+            <!-- Left Side: Instructions & Text -->
+            <div class="flex-1 p-12 flex flex-col justify-center">
+                <div class="mb-10">
+                    <h1 class="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">Connect to<br /><span
+                            class="text-primary">Network</span></h1>
+                    <p class="text-lg text-slate-300 leading-relaxed max-w-md">
+                        Your ODS Player is ready. Follow the steps below to connect it to your Wi-Fi network using your
+                        mobile device.
+                    </p>
+                </div>
+                <div class="space-y-8">
+                    <!-- Step 1 -->
+                    <div class="flex gap-5 group">
+                        <div
+                            class="flex-shrink-0 size-10 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-lg group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                            1</div>
+                        <div>
+                            <h3 class="text-white font-semibold text-xl mb-1">Scan the QR Code</h3>
+                            <p class="text-slate-400 text-sm">Use your phone's camera to scan the code.</p>
+                        </div>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="flex gap-5 group">
+                        <div
+                            class="flex-shrink-0 size-10 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-lg group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                            2</div>
+                        <div>
+                            <h3 class="text-white font-semibold text-xl mb-1">Join Wi-Fi Network</h3>
+                            <p class="text-slate-400 text-sm">Connect to the temporary network shown.</p>
+                        </div>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="flex gap-5 group">
+                        <div
+                            class="flex-shrink-0 size-10 rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center justify-center font-bold text-lg group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+                            3</div>
+                        <div>
+                            <h3 class="text-white font-semibold text-xl mb-1">Complete Setup</h3>
+                            <p class="text-slate-400 text-sm">Follow the instructions on your phone.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Right Side: Visual Focus (QR Code) -->
+            <div
+                class="flex-1 bg-gradient-to-br from-slate-800/50 to-slate-900/50 p-12 flex flex-col items-center justify-center border-l border-white/5 relative overflow-hidden">
+                <!-- Abstract Decorative Circles -->
+                <div
+                    class="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none">
+                </div>
+                <div
+                    class="absolute bottom-0 left-0 -ml-20 -mb-20 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none">
+                </div>
+                <!-- QR Code Card -->
+                <div
+                    class="bg-white p-4 rounded-2xl shadow-xl mb-8 transform hover:scale-[1.02] transition-transform duration-500">
+                    <!-- Using a placeholder for QR code but styled to look real -->
+                    <div class="aspect-square w-64 h-64 bg-slate-900 rounded-lg overflow-hidden relative">
+                        <div class="w-full h-full bg-white p-2">
+                            <!-- Placeholder for actual QR code content -->
+                            <div class="w-full h-full border-4 border-slate-900 rounded-sm bg-[url('https://api.qrserver.com/v1/create-qr-code/?size=300x300&amp;data=WIFI:S:ODS-VIVID-STONE-RICH;T:WPA;P:password;;')] bg-cover bg-center"
+                                data-alt="QR Code to connect to ODS Setup Network"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center z-10">
+                    <p class="text-slate-400 uppercase text-xs font-bold tracking-widest mb-2">Network Name (SSID)</p>
+                    <div
+                        class="inline-flex items-center gap-3 px-6 py-3 bg-slate-950/50 rounded-xl border border-primary/20 shadow-inner">
+                        <span class="material-symbols-outlined text-primary">wifi</span>
+                        <span class="text-2xl font-mono font-bold text-white tracking-wide">ODS-VIVID-STONE-RICH</span>
+                    </div>
+                </div>
+                <p class="mt-8 text-slate-500 text-sm flex items-center gap-2">
+                    <span class="material-symbols-outlined text-base">info</span>
+                    No password required for initial connection
+                </p>
+            </div>
+        </div>
+        <!-- Floating Status Pill at Bottom -->
+        <div class="absolute bottom-12 left-1/2 -translate-x-1/2">
+            <div
+                class="bg-slate-900 text-slate-400 text-sm font-medium px-6 py-2.5 rounded-full border border-slate-800 shadow-lg flex items-center gap-3 animate-pulse">
+                <div class="size-2 rounded-full bg-amber-500"></div>
+                Waiting for mobile connection...
+            </div>
+        </div>
+    </main>
+    <!-- Background decorative elements to enhance "TV Setup" vibe -->
+    <div
+        class="fixed inset-0 pointer-events-none z-[-1] bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]">
+    </div>
+</body>
+
+</html>

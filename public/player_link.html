@@ -5,165 +5,436 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>ODS Player Link</title>
-    <!-- Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap"
         rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet" />
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <!-- QR Code Library -->
     <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
-    <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
             theme: {
                 extend: {
-                    colors: {
-                        "primary": "#3c83f6",
-                        "background-light": "#f5f7f8",
-                        "background-dark": "#0f172a",
-                        "glass-surface": "rgba(255, 255, 255, 0.03)",
-                        "glass-border": "rgba(255, 255, 255, 0.08)",
-                    },
+                    colors: { "primary": "#3c83f6" },
                     fontFamily: {
                         "display": ["Inter", "sans-serif"],
                         "mono": ["JetBrains Mono", "monospace"],
                     },
-                    boxShadow: {
-                        "glow": "0 0 20px rgba(60, 131, 246, 0.35)",
-                    },
-                    animation: {
-                        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                    }
                 },
             },
         }
     </script>
     <style>
-        /* Black background — prevents white flash before CSS/images load */
         html,
         body {
             background-color: #000 !important;
+            margin: 0;
+            padding: 0;
         }
 
-        /* FOUC guard: body hidden until Tailwind + fonts load */
         body {
             opacity: 0;
             transition: opacity 0.3s ease;
+            font-family: 'Inter', -apple-system, sans-serif;
+            min-height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: url('/resources/designs/ODS_Background.png') center/cover no-repeat fixed;
         }
 
         body.ready {
             opacity: 1;
         }
 
-        /* Premium simulated glassmorphism — GPU-safe, no backdrop-filter */
+        * {
+            box-sizing: border-box;
+        }
+
         .glass-card {
             background: linear-gradient(135deg,
                     rgba(255, 255, 255, 0.88) 0%,
                     rgba(255, 255, 255, 0.78) 50%,
                     rgba(255, 255, 255, 0.85) 100%);
             border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow:
-                0 8px 32px rgba(0, 0, 0, 0.12),
-                0 2px 8px rgba(0, 0, 0, 0.06),
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06),
                 inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
 
         .glass-pill {
-            background: linear-gradient(135deg,
-                    rgba(255, 255, 255, 0.85) 0%,
-                    rgba(255, 255, 255, 0.75) 100%);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.75) 100%);
             border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow:
-                0 4px 16px rgba(0, 0, 0, 0.1),
-                0 1px 4px rgba(0, 0, 0, 0.05),
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.05),
                 inset 0 1px 0 rgba(255, 255, 255, 0.7);
         }
 
-        .text-glow {
-            text-shadow: 0 0 25px rgba(60, 131, 246, 0.6);
+        /* Split card layout */
+        .setup-card {
+            display: flex;
+            flex-direction: row;
+            max-width: 1100px;
+            width: 90%;
+            min-height: 500px;
+            border-radius: 1rem;
+            overflow: hidden;
         }
 
-        .bg-pattern {
-            background-image:
-                radial-gradient(circle at 10% 20%, rgba(60, 131, 246, 0.08) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(60, 131, 246, 0.05) 0%, transparent 40%);
+        .card-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem;
+            border-right: 1px solid rgba(26, 26, 46, 0.08);
         }
 
-        /* Smooth progress bar - only animate width, not all properties */
+        .card-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 2.5rem 3rem;
+        }
+
+        @media (orientation: portrait),
+        (max-width: 900px) {
+            .setup-card {
+                flex-direction: column;
+                max-width: 600px;
+                min-height: auto;
+            }
+
+            .card-left {
+                border-right: none;
+                border-bottom: 1px solid rgba(26, 26, 46, 0.08);
+                padding: 2rem;
+            }
+
+            .card-right {
+                padding: 2rem;
+            }
+        }
+
+        .qr-container {
+            background: #fff;
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .qr-label {
+            font-size: 0.8rem;
+            color: #1a1a2e;
+            opacity: 0.5;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .heading-main {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            line-height: 1.2;
+            margin-bottom: 0.5rem;
+        }
+
+        .heading-accent {
+            color: #3c83f6;
+        }
+
+        .heading-sub {
+            font-size: 1.1rem;
+            color: #1a1a2e;
+            opacity: 0.6;
+            font-weight: 400;
+            margin-bottom: 2rem;
+        }
+
+        .code-label {
+            font-size: 0.7rem;
+            color: #3c83f6;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 0.35rem;
+        }
+
+        .code-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 4rem;
+            font-weight: 700;
+            color: #1a1a2e;
+            letter-spacing: 0.08em;
+            line-height: 1;
+            margin-bottom: 2rem;
+        }
+
+        .step-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .step-num {
+            flex-shrink: 0;
+            width: 2.25rem;
+            height: 2.25rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .step-num-active {
+            background: rgba(60, 131, 246, 0.2);
+            color: #3c83f6;
+            border: 1px solid rgba(60, 131, 246, 0.3);
+        }
+
+        .step-num-inactive {
+            background: rgba(26, 26, 46, 0.06);
+            color: #1a1a2e;
+            border: 1px solid rgba(26, 26, 46, 0.1);
+        }
+
+        .step-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1a1a2e;
+            line-height: 1.3;
+        }
+
+        .step-title .url {
+            color: #3c83f6;
+            font-weight: 600;
+        }
+
+        .step-desc {
+            font-size: 0.85rem;
+            color: #1a1a2e;
+            opacity: 0.5;
+            margin-top: 0.15rem;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            padding-bottom: 7rem;
+            z-index: 10;
+        }
+
+        .status-footer {
+            position: absolute;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            z-index: 10;
+            top: 90%;
+            transform: translateY(-50%);
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1.75rem;
+            border-radius: 9999px;
+        }
+
+        .pill-col {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pill-text {
+            color: #111827;
+            font-weight: 500;
+            font-size: 1.05rem;
+        }
+
+        .pill-detail {
+            color: #111827;
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+
+        .dot-container {
+            position: relative;
+            width: 0.875rem;
+            height: 0.875rem;
+        }
+
+        .dot-ping {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 9999px;
+            background: #fbbf24;
+            opacity: 0.75;
+            animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        .dot-solid {
+            position: relative;
+            width: 0.875rem;
+            height: 0.875rem;
+            border-radius: 9999px;
+            background: #f59e0b;
+        }
+
+        @keyframes ping {
+
+            75%,
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+
+        /* State visibility */
+        .state-hidden {
+            display: none !important;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 4rem;
+            height: 4rem;
+            border: 4px solid rgba(60, 131, 246, 0.2);
+            border-top-color: #3c83f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Cooldown progress */
         #cooldownProgress {
             transition: width 1s linear;
+        }
+
+        /* Error/Cooldown cards */
+        .state-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            padding: 3rem;
+            border-radius: 1rem;
+            gap: 1.5rem;
+        }
+
+        .icon-circle {
+            width: 5rem;
+            height: 5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .icon-circle-red {
+            background: rgba(239, 68, 68, 0.15);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .icon-circle-amber {
+            background: rgba(245, 158, 11, 0.15);
+            border: 2px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .retry-btn {
+            padding: 0.75rem 2rem;
+            background: linear-gradient(to right, #3b82f6, #3c83f6);
+            color: white;
+            font-weight: 600;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
 
-<body
-    class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display min-h-screen overflow-hidden flex flex-col relative"
-    style="background: url('/resources/designs/ODS_Background.png') center/cover no-repeat fixed;">
-    <!-- Header Section - Removed subtitle, keeping space for logo alignment -->
-    <header class="w-full pt-32 pb-6 px-10 flex flex-col items-center justify-center z-10">
-    </header>
-
+<body>
     <!-- Loading State -->
-    <main id="loadingState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-44 z-10">
-        <div class="flex flex-col items-center gap-4">
-            <div class="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent"></div>
-            <p class="text-xl" style="color: #1a1a2e;">Initializing device...</p>
+    <main id="loadingState" class="main-content">
+        <div class="glass-card state-card">
+            <div class="spinner"></div>
+            <div>
+                <h2 class="heading-main" style="font-size: 1.5rem; text-align: center;">Initializing device...</h2>
+                <p class="heading-sub" style="margin-bottom: 0; text-align: center;">Connecting to pairing server</p>
+            </div>
         </div>
     </main>
 
     <!-- Pairing State -->
-    <main id="pairingState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-44 z-10"
-        style="display: none;">
-        <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl w-auto">
-            <!-- QR Code Section -->
-            <div id="qrcodeContainer" class="bg-white p-3 rounded-xl shadow-lg mb-10">
-                <div id="qrcode"></div>
+    <main id="pairingState" class="main-content state-hidden">
+        <div class="glass-card setup-card">
+            <!-- Left: QR Code -->
+            <div class="card-left">
+                <div class="qr-container" id="qrcodeContainer">
+                    <div id="qrcode"></div>
+                </div>
+                <span class="qr-label">Scan to pair instantly</span>
             </div>
 
-            <!-- Pairing Code -->
-            <div class="flex flex-col items-center mb-10">
-                <span class="text-2xl font-semibold mb-2 tracking-wide uppercase whitespace-nowrap"
-                    style="color: #1a1a2e;">Pairing
-                    Code</span>
-                <h2 id="pairingCodeDisplay" class="font-mono text-[72px] leading-none font-bold tracking-wider"
-                    style="color: #1a1a2e;">
-                    --- ---
-                </h2>
-            </div>
+            <!-- Right: Content -->
+            <div class="card-right">
+                <h1 class="heading-main">Pair Your <span class="heading-accent">Device</span></h1>
+                <p class="heading-sub">Register this screen to your account</p>
 
-            <!-- Instructions -->
-            <div class="w-full">
-                <div class="space-y-4">
-                    <div class="flex items-center gap-4 group">
-                        <div
-                            class="flex-shrink-0 w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-base border border-primary/30">
-                            1</div>
-                        <p class="text-xl leading-snug whitespace-nowrap" style="color: #1a1a2e;">
-                            Scan the QR code or visit <span class="text-primary font-medium">ods-cloud.com/pair</span>
-                        </p>
+                <p class="code-label">Pairing Code</p>
+                <div class="code-value" id="pairingCodeDisplay">--- ---</div>
+
+                <div class="step-list">
+                    <div class="step-item">
+                        <div class="step-num step-num-active">1</div>
+                        <div>
+                            <div class="step-title">Scan the QR code or visit <span
+                                    class="url">ods-cloud.com/pair</span></div>
+                            <div class="step-desc">On your computer or mobile device</div>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-4 group">
-                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-base border border-gray-200 group-hover:bg-primary/10 group-hover:text-primary transition-colors"
-                            style="color: #1a1a2e;">
-                            2</div>
-                        <p class="text-xl leading-snug whitespace-nowrap" style="color: #1a1a2e;">
-                            Log in to your ODS Cloud account
-                        </p>
+                    <div class="step-item">
+                        <div class="step-num step-num-inactive">2</div>
+                        <div>
+                            <div class="step-title">Log in to your ODS Cloud account</div>
+                            <div class="step-desc">Create one if you haven't already</div>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-4 group">
-                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-base border border-gray-200 group-hover:bg-primary/10 group-hover:text-primary transition-colors"
-                            style="color: #1a1a2e;">
-                            3</div>
-                        <p class="text-xl leading-snug whitespace-nowrap" style="color: #1a1a2e;">
-                            Enter the code above to register this screen
-                        </p>
+                    <div class="step-item">
+                        <div class="step-num step-num-inactive">3</div>
+                        <div>
+                            <div class="step-title">Enter the code above to register this screen</div>
+                            <div class="step-desc">Your device will be linked automatically</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -171,139 +442,85 @@
     </main>
 
     <!-- Error State -->
-    <main id="errorState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-44 z-10"
-        style="display: none;">
-        <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl w-auto">
-            <div class="flex flex-col items-center gap-6 text-center">
-                <div
-                    class="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center border-2 border-red-500/30">
-                    <span class="material-symbols-outlined text-5xl text-red-500">error</span>
-                </div>
-                <div>
-                    <h2 class="text-3xl font-bold mb-2 whitespace-nowrap" style="color: #1a1a2e;">Connection Error</h2>
-                    <p id="errorMessage" class="text-lg whitespace-nowrap" style="color: #1a1a2e; line-height: 1.4;">
-                        Unable to connect to pairing server at
-                        <span class="font-mono bg-gray-100 px-2 py-1 rounded text-base">api.ods-cloud.com</span>
-                    </p>
-                    <p class="mt-2 text-base whitespace-nowrap" style="color: #1a1a2e; opacity: 0.7; line-height: 1.4;">
-                        Please check your network connection and ensure the server is reachable.</p>
-                </div>
-                <!-- Retry Button -->
-                <button onclick="retryConnection()"
-                    class="w-full max-w-xs px-8 py-3 bg-gradient-to-r from-blue-500 to-primary text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 active:translate-y-0">
-                    <div class="flex items-center justify-center gap-2">
-                        <span class="material-symbols-outlined text-[20px]">refresh</span>
-                        <span>Retry Connection</span>
-                    </div>
-                </button>
+    <main id="errorState" class="main-content state-hidden">
+        <div class="glass-card state-card">
+            <div class="icon-circle icon-circle-red">
+                <span class="material-symbols-outlined" style="font-size: 2.5rem; color: #ef4444;">error</span>
             </div>
+            <div>
+                <h2 class="heading-main" style="font-size: 1.5rem; text-align: center;">Connection Error</h2>
+                <p id="errorMessage" class="heading-sub" style="margin-bottom: 0; text-align: center;">
+                    Unable to connect to pairing server
+                </p>
+            </div>
+            <button onclick="retryConnection()" class="retry-btn">
+                <span style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="material-symbols-outlined" style="font-size: 1.25rem;">refresh</span>
+                    Retry Connection
+                </span>
+            </button>
         </div>
     </main>
 
     <!-- Cooldown State -->
-    <main id="cooldownState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-44 z-10"
-        style="display: none;">
-        <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl w-auto">
-            <div class="flex flex-col items-center gap-6 text-center">
-                <div
-                    class="w-20 h-20 rounded-full bg-amber-500/20 flex items-center justify-center border-2 border-amber-500/30">
-                    <span class="material-symbols-outlined text-5xl text-amber-500">schedule</span>
-                </div>
-                <div>
-                    <h2 class="text-3xl font-bold mb-2 whitespace-nowrap" style="color: #1a1a2e;">Rate Limit Reached
-                    </h2>
-                    <p class="text-lg whitespace-nowrap" style="color: #1a1a2e; line-height: 1.4;">Too many pairing
-                        attempts. Please wait before trying again.</p>
-                </div>
-                <!-- Countdown Timer -->
-                <div class="flex flex-col items-center gap-2">
-                    <span class="font-mono text-[56px] leading-none font-bold text-amber-600"
-                        id="cooldownTimer">10:00</span>
-                    <span class="text-base" style="color: #1a1a2e;">until next pairing attempt</span>
-                </div>
-                <div class="w-full max-w-xs bg-gray-200 rounded-full h-2 mt-2">
-                    <div id="cooldownProgress" class="bg-amber-500 h-2 rounded-full" style="width: 100%"></div>
-                </div>
+    <main id="cooldownState" class="main-content state-hidden">
+        <div class="glass-card state-card">
+            <div class="icon-circle icon-circle-amber">
+                <span class="material-symbols-outlined" style="font-size: 2.5rem; color: #f59e0b;">schedule</span>
+            </div>
+            <div>
+                <h2 class="heading-main" style="font-size: 1.5rem; text-align: center;">Rate Limit Reached</h2>
+                <p class="heading-sub" style="margin-bottom: 0; text-align: center;">
+                    Too many attempts. Please wait before trying again.
+                </p>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+                <span id="cooldownTimer"
+                    style="font-family: 'JetBrains Mono', monospace; font-size: 3.5rem; font-weight: 700; color: #f59e0b;">10:00</span>
+                <span style="font-size: 0.9rem; color: #1a1a2e; opacity: 0.6;">until next pairing attempt</span>
+            </div>
+            <div
+                style="width: 100%; max-width: 240px; background: rgba(26,26,46,0.08); border-radius: 9999px; height: 0.5rem; margin-top: 0.5rem;">
+                <div id="cooldownProgress"
+                    style="background: #f59e0b; height: 0.5rem; border-radius: 9999px; width: 100%;"></div>
             </div>
         </div>
     </main>
 
-
-    <!-- Footer / Status Pill — positioned at 90% vertical (matches throbber .90) -->
-    <footer class="absolute w-full flex justify-center z-10" style="top: 90%; transform: translateY(-50%);">
-        <div id="statusPill" class="glass-pill px-7 py-3.5 rounded-full inline-flex items-center gap-3 shadow-lg">
-            <span id="statusDot" class="relative flex h-3.5 w-3.5">
-                <span
-                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500"></span>
+    <!-- Status Pill -->
+    <footer class="status-footer">
+        <div id="statusPill" class="glass-pill pill">
+            <span id="statusDot" class="dot-container">
+                <span class="dot-ping"></span>
+                <span class="dot-solid"></span>
             </span>
-            <div class="flex flex-col" id="statusContent">
-                <span id="statusText" class="text-gray-900 font-medium tracking-wide"
-                    style="font-size: 1.05rem;">Initializing...</span>
-                <span id="statusDetails" class="text-gray-900" style="font-size: 0.9rem;"></span>
+            <div class="pill-col" id="statusContent">
+                <span id="statusText" class="pill-text">Initializing...</span>
+                <span id="statusDetails" class="pill-detail"></span>
             </div>
         </div>
     </footer>
-
-    <!-- Ambient background glows -->
-    <div class="absolute top-0 left-0 w-full h-full overflow-hidden -z-0 pointer-events-none">
-        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 blur-[120px] rounded-full"></div>
-        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
-    </div>
 
     <script>
         // ========================================
         // ENTERPRISE SECURITY: COMPLETE KEYBOARD LOCKDOWN
         // ========================================
-        // Block ALL keyboard shortcuts except Ctrl+Alt+Shift+O for system config
-
         document.addEventListener('keydown', function (e) {
-            // Ctrl+Alt+Shift+O → System Configuration (O = Options)
             if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'O') {
-                e.preventDefault();
-                window.location.href = '/system_config.html';
-                return;
+                e.preventDefault(); window.location.href = '/system_config.html'; return;
             }
-
-            // Block ALL other keyboard shortcuts
             if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-                return false;
+                e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); return false;
             }
-
-            // Block function keys (F1-F12)
-            if (e.key.startsWith('F') && e.key.length <= 3) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-
-            // Block other dangerous keys
-            const blockedKeys = ['Escape', 'PrintScreen', 'ContextMenu'];
-            if (blockedKeys.includes(e.key)) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        }, true); // Use capture phase
-
-        // Block right-click context menu
-        document.addEventListener('contextmenu', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            return false;
+            if (e.key.startsWith('F') && e.key.length <= 3) { e.preventDefault(); e.stopPropagation(); return false; }
+            const blocked = ['Escape', 'PrintScreen', 'ContextMenu'];
+            if (blocked.includes(e.key)) { e.preventDefault(); e.stopPropagation(); return false; }
         }, true);
+        document.addEventListener('contextmenu', function (e) { e.preventDefault(); return false; }, true);
 
-        // ========================================
-        // FOUC GUARD
-        // ========================================
-        function revealPage() {
-            document.body.classList.add('ready');
-        }
+        // FOUC guard
+        function revealPage() { document.body.classList.add('ready'); }
         window.addEventListener('load', revealPage);
-        // Safety: reveal after 6s even if resources stall
         setTimeout(revealPage, 6000);
 
         // ========================================
@@ -312,7 +529,7 @@
         const API_URL = 'https://api.ods-cloud.com';
         const WS_URL = 'https://api.ods-cloud.com';
         const MAX_PAIRING_CODES = 5;
-        const COOLDOWN_DURATION_MS = 10 * 60 * 1000; // 10 minutes
+        const COOLDOWN_DURATION_MS = 10 * 60 * 1000;
 
         let deviceUuid = null;
         let pairingCode = null;
@@ -320,251 +537,158 @@
         let pollInterval = null;
         let cooldownInterval = null;
 
-        // ========================================
-        // RATE LIMITING (persists across reboots)
-        // ========================================
+        // State management helpers
+        function showState(stateId) {
+            ['loadingState', 'pairingState', 'errorState', 'cooldownState'].forEach(id => {
+                document.getElementById(id).classList.toggle('state-hidden', id !== stateId);
+            });
+        }
+
+        // Rate limiting
         function getRateLimitState() {
             try {
-                const state = JSON.parse(localStorage.getItem('ods_pairing_rate_limit') || '{}');
-                return {
-                    count: state.count || 0,
-                    cooldownUntil: state.cooldownUntil || 0
-                };
+                const s = JSON.parse(localStorage.getItem('ods_pairing_rate_limit') || '{}');
+                return { count: s.count || 0, cooldownUntil: s.cooldownUntil || 0 };
             } catch { return { count: 0, cooldownUntil: 0 }; }
         }
-
-        function setRateLimitState(state) {
-            localStorage.setItem('ods_pairing_rate_limit', JSON.stringify(state));
-        }
-
+        function setRateLimitState(s) { localStorage.setItem('ods_pairing_rate_limit', JSON.stringify(s)); }
         function incrementPairingCount() {
-            const state = getRateLimitState();
-            state.count = (state.count || 0) + 1;
-            if (state.count >= MAX_PAIRING_CODES) {
-                state.cooldownUntil = Date.now() + COOLDOWN_DURATION_MS;
-                state.count = 0; // reset count for after cooldown
-            }
-            setRateLimitState(state);
-            return state;
+            const s = getRateLimitState();
+            s.count = (s.count || 0) + 1;
+            if (s.count >= MAX_PAIRING_CODES) { s.cooldownUntil = Date.now() + COOLDOWN_DURATION_MS; s.count = 0; }
+            setRateLimitState(s);
+            return s;
         }
-
-        function isInCooldown() {
-            const state = getRateLimitState();
-            return state.cooldownUntil > Date.now();
-        }
+        function isInCooldown() { return getRateLimitState().cooldownUntil > Date.now(); }
 
         function showCooldown() {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('pairingState').style.display = 'none';
-            document.getElementById('errorState').style.display = 'none';
-            document.getElementById('cooldownState').style.display = 'flex';
+            showState('cooldownState');
             updateStatus('waiting', 'Rate limited', 'Waiting for cooldown');
-
             const state = getRateLimitState();
             const totalDuration = COOLDOWN_DURATION_MS;
-
             cooldownInterval = setInterval(() => {
                 const remaining = Math.max(0, state.cooldownUntil - Date.now());
-                const minutes = Math.floor(remaining / 60000);
-                const seconds = Math.floor((remaining % 60000) / 1000);
-                document.getElementById('cooldownTimer').textContent =
-                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
-
-                const elapsed = totalDuration - remaining;
-                const progress = Math.max(0, 100 - (elapsed / totalDuration * 100));
+                const min = Math.floor(remaining / 60000);
+                const sec = Math.floor((remaining % 60000) / 1000);
+                document.getElementById('cooldownTimer').textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+                const progress = Math.max(0, 100 - ((totalDuration - remaining) / totalDuration * 100));
                 document.getElementById('cooldownProgress').style.width = `${progress}%`;
-
                 if (remaining <= 0) {
                     clearInterval(cooldownInterval);
                     setRateLimitState({ count: 0, cooldownUntil: 0 });
-                    document.getElementById('cooldownState').style.display = 'none';
-                    document.getElementById('loadingState').style.display = 'flex';
+                    showState('loadingState');
                     initPairing();
                 }
             }, 1000);
         }
 
-        // Get or generate device UUID
         function getDeviceUuid() {
             let uuid = localStorage.getItem('ods_device_uuid');
             if (!uuid) {
-                uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
                     const r = Math.random() * 16 | 0;
-                    const v = c == 'x' ? r : (r & 0x3 | 0x8);
-                    return v.toString(16);
+                    return (c == 'x' ? r : (r & 0x3 | 0x8)).toString(16);
                 });
                 localStorage.setItem('ods_device_uuid', uuid);
             }
             return uuid;
         }
 
-        // Get CPU serial
         function getCpuSerial() {
-            let serial = localStorage.getItem('ods_cpu_serial');
-            if (!serial) {
-                serial = 'CPU' + Math.random().toString(36).substring(2, 15);
-                localStorage.setItem('ods_cpu_serial', serial);
-            }
-            return serial;
+            let s = localStorage.getItem('ods_cpu_serial');
+            if (!s) { s = 'CPU' + Math.random().toString(36).substring(2, 15); localStorage.setItem('ods_cpu_serial', s); }
+            return s;
         }
 
-        // Update status
         function updateStatus(state, message, details = '') {
-            const statusDot = document.getElementById('statusDot');
-            const statusText = document.getElementById('statusText');
-            const statusDetails = document.getElementById('statusDetails');
-
-            statusText.textContent = message;
-            if (statusDetails) {
-                statusDetails.textContent = details;
-            }
-
+            const dot = document.getElementById('statusDot');
+            document.getElementById('statusText').textContent = message;
+            const d = document.getElementById('statusDetails');
+            if (d) d.textContent = details;
             if (state === 'waiting') {
-                statusDot.innerHTML = `
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-amber-500"></span>
-                `;
+                dot.innerHTML = `<span class="dot-ping"></span><span class="dot-solid"></span>`;
             } else if (state === 'success') {
-                statusDot.innerHTML = `
-                    <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
-                `;
+                dot.innerHTML = `<span class="dot-solid" style="background:#10b981;"></span>`;
             } else if (state === 'error') {
-                statusDot.innerHTML = `
-                    <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500"></span>
-                `;
+                dot.innerHTML = `<span class="dot-solid" style="background:#ef4444;"></span>`;
             }
         }
 
-        // Retry connection function
         function retryConnection() {
-            // Hide error state, show loading state
-            document.getElementById('errorState').style.display = 'none';
-            document.getElementById('loadingState').style.display = 'flex';
-            updateStatus('waiting', 'Retrying...', 'Attempting to connect to server');
-
-            // Retry initialization
-            setTimeout(() => {
-                initPairing();
-            }, 500);
+            showState('loadingState');
+            updateStatus('waiting', 'Retrying...', 'Attempting to connect');
+            setTimeout(() => initPairing(), 500);
         }
 
-        // Show error
         function showError(message) {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('pairingState').style.display = 'none';
-            document.getElementById('errorState').style.display = 'flex';
+            showState('errorState');
             document.getElementById('errorMessage').textContent = message;
             updateStatus('error', 'Connection error');
         }
 
-        // Generate QR code
         function generateQR(url) {
             const qrDiv = document.getElementById('qrcode');
             qrDiv.innerHTML = '';
             new QRCode(qrDiv, {
-                text: url,
-                width: 256,
-                height: 256,
-                colorDark: '#0f172a',
-                colorLight: '#ffffff',
+                text: url, width: 256, height: 256,
+                colorDark: '#0f172a', colorLight: '#ffffff',
                 correctLevel: QRCode.CorrectLevel.H
             });
         }
 
-        // Poll pairing status
         function startPolling() {
             pollInterval = setInterval(async () => {
                 try {
-                    const response = await fetch(`${API_URL}/api/pairing/status/${deviceUuid}`);
-                    const data = await response.json();
-
-                    if (data.paired) {
+                    const r = await fetch(`${API_URL}/api/pairing/status/${deviceUuid}`);
+                    const d = await r.json();
+                    if (d.paired) {
                         clearInterval(pollInterval);
                         updateStatus('success', '✓ Paired successfully!');
-                        setTimeout(() => {
-                            window.location.href = '/player.html';
-                        }, 2000);
+                        setTimeout(() => { window.location.href = '/player.html'; }, 2000);
                     }
-                } catch (error) {
-                    console.error('Error polling status:', error);
-                }
+                } catch (e) { console.error('Poll error:', e); }
             }, 5000);
         }
 
-        // Initialize WebSocket
         function initWebSocket() {
             socket = io(WS_URL);
-
-            socket.on('connect', () => {
-                console.log('WebSocket connected');
-            });
-
             socket.on('pairing:success', (data) => {
                 if (data.device_uuid === deviceUuid) {
                     clearInterval(pollInterval);
                     updateStatus('success', '✓ Paired successfully!');
-                    setTimeout(() => {
-                        window.location.href = '/player.html';
-                    }, 2000);
+                    setTimeout(() => { window.location.href = '/player.html'; }, 2000);
                 }
-            });
-
-            socket.on('disconnect', () => {
-                console.log('WebSocket disconnected');
             });
         }
 
-        // Initialize pairing
         async function initPairing() {
             try {
-                // Check cooldown first
-                if (isInCooldown()) {
-                    showCooldown();
-                    return;
-                }
-
+                if (isInCooldown()) { showCooldown(); return; }
                 deviceUuid = getDeviceUuid();
                 const cpuSerial = getCpuSerial();
-
                 updateStatus('waiting', 'Connecting...', 'Generating pairing code');
 
                 const response = await fetch(`${API_URL}/api/pairing/generate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        cpu_serial: cpuSerial,
-                        device_uuid: deviceUuid
-                    })
+                    body: JSON.stringify({ cpu_serial: cpuSerial, device_uuid: deviceUuid })
                 });
 
                 if (!response.ok) {
                     const error = await response.json();
-                    if (error.paired) {
-                        window.location.href = '/player.html';
-                        return;
-                    }
-                    // If server says rate limited, trigger local cooldown
+                    if (error.paired) { window.location.href = '/player.html'; return; }
                     if (response.status === 429) {
-                        const state = getRateLimitState();
-                        state.cooldownUntil = Date.now() + COOLDOWN_DURATION_MS;
-                        state.count = 0;
-                        setRateLimitState(state);
-                        showCooldown();
-                        return;
+                        const s = getRateLimitState(); s.cooldownUntil = Date.now() + COOLDOWN_DURATION_MS; s.count = 0;
+                        setRateLimitState(s); showCooldown(); return;
                     }
                     throw new Error(error.error || 'Failed to generate pairing code');
                 }
 
-                // Track this code generation
                 const rateLimitState = incrementPairingCount();
-                console.log(`[RATE LIMIT] Codes used: ${rateLimitState.count}/${MAX_PAIRING_CODES}`);
-
                 const data = await response.json();
                 pairingCode = data.pairing_code;
 
-                // Show pairing state
-                document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('pairingState').style.display = 'flex';
+                showState('pairingState');
                 document.getElementById('pairingCodeDisplay').textContent =
                     pairingCode.slice(0, 3) + '-' + pairingCode.slice(3);
 
@@ -573,19 +697,14 @@
                     `Code ${rateLimitState.count}/${MAX_PAIRING_CODES}`);
                 startPolling();
                 initWebSocket();
-
             } catch (error) {
-                console.error('Initialization error:', error);
+                console.error('Init error:', error);
                 showError(`Error: ${error.message}`);
             }
         }
 
-        // Start initialization
-        if (isInCooldown()) {
-            showCooldown();
-        } else {
-            initPairing();
-        }
+        // Start
+        if (isInCooldown()) { showCooldown(); } else { initPairing(); }
     </script>
 </body>
 
