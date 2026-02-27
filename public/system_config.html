@@ -276,6 +276,7 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-400 mb-1.5">Password</label>
                         <input id="wifi-password" type="password" placeholder="Enter password"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();connectWifi();}"
                             class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm" />
                     </div>
                 </div>
@@ -423,12 +424,12 @@
             <div class="config-card rounded-xl p-6 mb-4">
                 <div class="grid grid-cols-2 gap-6">
                     <div>
-                        <span class="text-sm text-slate-400">Device UUID</span>
-                        <p id="player-uuid" class="text-sm font-medium stat-value font-mono mt-1">—</p>
+                        <span class="text-sm text-slate-400">Device Name</span>
+                        <p id="player-device-name" class="text-sm font-medium stat-value mt-1">—</p>
                     </div>
                     <div>
                         <span class="text-sm text-slate-400">Player Version</span>
-                        <p id="player-version" class="text-sm font-medium stat-value mt-1">v8-3-1</p>
+                        <p id="player-version" class="text-sm font-medium stat-value mt-1">—</p>
                     </div>
                 </div>
             </div>
@@ -471,6 +472,14 @@
             <div class="config-card rounded-xl p-6 mb-4">
                 <div class="grid grid-cols-3 gap-6">
                     <div>
+                        <span class="text-sm text-slate-400">Device UUID</span>
+                        <p id="sys-device-uuid" class="text-sm font-semibold stat-value font-mono">—</p>
+                    </div>
+                    <div>
+                        <span class="text-sm text-slate-400">Player Version</span>
+                        <p id="sys-full-version" class="text-lg font-semibold stat-value">—</p>
+                    </div>
+                    <div>
                         <span class="text-sm text-slate-400">Hostname</span>
                         <p id="sys-hostname" class="text-lg font-semibold stat-value">—</p>
                     </div>
@@ -481,6 +490,10 @@
                     <div>
                         <span class="text-sm text-slate-400">Uptime</span>
                         <p id="sys-uptime" class="text-lg font-semibold stat-value">—</p>
+                    </div>
+                    <div>
+                        <span class="text-sm text-slate-400">OS Version</span>
+                        <p id="sys-os" class="text-lg font-semibold stat-value">—</p>
                     </div>
                     <div>
                         <span class="text-sm text-slate-400">RAM Usage</span>
@@ -495,10 +508,6 @@
                         <div class="w-full bg-slate-700 rounded-full h-2 mt-1.5">
                             <div id="sys-storage-bar" class="bg-emerald-500 h-2 rounded-full" style="width: 0%"></div>
                         </div>
-                    </div>
-                    <div>
-                        <span class="text-sm text-slate-400">OS Version</span>
-                        <p id="sys-os" class="text-lg font-semibold stat-value">—</p>
                     </div>
                 </div>
             </div>
@@ -562,6 +571,7 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-400 mb-1.5">Password</label>
                         <input id="admin-pass" type="password" placeholder="Password"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();adminLogin();}"
                             class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm" />
                     </div>
                 </div>
@@ -824,6 +834,14 @@
                 if (data.ram_percent) document.getElementById('sys-ram-bar').style.width = data.ram_percent + '%';
                 if (data.storage_percent) document.getElementById('sys-storage-bar').style.width = data.storage_percent + '%';
 
+                // Player section — Device Name + clean version (no build flag)
+                document.getElementById('player-device-name').textContent = data.device_name || data.hostname || '—';
+                document.getElementById('player-version').textContent = data.version_clean || '—';
+
+                // Admin System Info — UUID + full version with build flag
+                document.getElementById('sys-device-uuid').textContent = localStorage.getItem('ods_device_uuid') || 'Not generated';
+                document.getElementById('sys-full-version').textContent = data.os_version || '—';
+
                 // Enhanced network interfaces display
                 if (data.interfaces) {
                     const container = document.getElementById('sys-network-interfaces');
@@ -864,7 +882,6 @@
                     }
                 }
 
-                document.getElementById('player-uuid').textContent = localStorage.getItem('ods_device_uuid') || 'Not generated';
             } catch (e) { console.error('System info error:', e); }
         }
 
@@ -1046,6 +1063,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-400 mb-1.5">Confirm Password</label>
                     <input id="modal-confirm-pass" type="password" placeholder="Confirm password"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();document.querySelector('#modal-actions button:last-child')?.click();}"
                         class="w-full px-4 py-2.5 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-blue-500 outline-none text-sm" />
                 </div>
             </div>`;

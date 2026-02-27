@@ -188,13 +188,14 @@ app.get('/api/system/info', (req, res) => {
         ram_percent: "free | awk '/^Mem:/ {printf \"%.0f\", $3/$2*100}'",
         storage: "df -h / | awk 'NR==2 {print $3 \"/\" $2}'",
         storage_percent: "df / | awk 'NR==2 {print $5}' | tr -d '%'",
-        os_version: 'echo "v8-3-1-FLASH"',
+        os_version: 'cat /home/signage/ODS/VERSION 2>/dev/null || echo unknown',
         ip_address: "hostname -I | awk '{print $1}'",
         dns: "cat /etc/resolv.conf | grep nameserver | head -1 | awk '{print $2}'",
         interfaces: "ip -o addr show | awk '{print $2, $3, $4}' | grep -v '^lo '",
         display_resolution: "DISPLAY=:0 xrandr 2>/dev/null | grep '[*]' | head -1 | awk '{print $1}'",
         display_scale: "echo $ODS_SCALE",
-        disk_total: "lsblk -dn -o SIZE /dev/mmcblk0 2>/dev/null || echo '—'"
+        disk_total: "lsblk -dn -o SIZE /dev/mmcblk0 2>/dev/null || echo '—'",
+        device_name: '/usr/local/bin/ods-hostname.sh generate 2>/dev/null || hostname'
     };
 
     let completed = 0;
@@ -215,6 +216,7 @@ app.get('/api/system/info', (req, res) => {
             if (completed === total) {
                 res.json({
                     hostname: info.hostname,
+                    device_name: info.device_name || info.hostname,
                     cpu_temp: info.cpu_temp,
                     uptime: info.uptime,
                     ram_usage: info.ram,
@@ -222,7 +224,8 @@ app.get('/api/system/info', (req, res) => {
                     storage_usage: info.storage,
                     storage_percent: parseInt(info.storage_percent) || 0,
                     disk_total: info.disk_total ? info.disk_total.trim() : '—',
-                    os_version: info.os_version,
+                    os_version: info.os_version ? `v${info.os_version.trim().replace(/\./g, '-')}-FLASH` : '—',
+                    version_clean: info.os_version ? `v${info.os_version.trim().replace(/\./g, '-')}` : '—',
                     ip_address: info.ip_address,
                     dns: info.dns,
                     interfaces: info.interfaces,
