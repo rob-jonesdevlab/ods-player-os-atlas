@@ -12,43 +12,35 @@ app.use(express.static('public'));
 // CAPTIVE PORTAL DETECTION
 // ========================================
 // When phones join the AP, they probe these URLs to detect captive portals.
-// CRITICAL: iOS requires a 200 OK with HTML body (NOT a 302 redirect).
-// If iOS gets a 302, it may show "Unable to Join" instead of the captive portal sheet.
-// Returning any 200 response that is NOT the exact "Success" string triggers the portal.
+// iOS CNA does NOT execute JavaScript or follow meta-refresh redirects.
+// We serve setup.html directly so the form renders inside the CNA sheet.
+const path = require('path');
+const SETUP_PAGE = path.join(__dirname, 'public', 'setup.html');
 
-const CAPTIVE_PORTAL_HTML = `<!DOCTYPE html>
-<html><head>
-<title>ODS Setup</title>
-<meta http-equiv="refresh" content="0;url=http://192.168.4.1:8080/setup.html">
-</head><body>
-<p>Redirecting to <a href="http://192.168.4.1:8080/setup.html">ODS Setup</a>...</p>
-<script>window.location.href='http://192.168.4.1:8080/setup.html';</script>
-</body></html>`;
-
-// iOS captive portal detection
+// iOS captive portal detection — serve setup page directly
 app.get('/hotspot-detect.html', (req, res) => {
-    res.status(200).type('html').send(CAPTIVE_PORTAL_HTML);
+    res.status(200).type('html').sendFile(SETUP_PAGE);
 });
 
 // Android captive portal detection (expects non-204 response)
 app.get('/generate_204', (req, res) => {
-    res.status(200).type('html').send(CAPTIVE_PORTAL_HTML);
+    res.status(200).type('html').sendFile(SETUP_PAGE);
 });
 app.get('/gen_204', (req, res) => {
-    res.status(200).type('html').send(CAPTIVE_PORTAL_HTML);
+    res.status(200).type('html').sendFile(SETUP_PAGE);
 });
 
 // Windows captive portal detection
 app.get('/connecttest.txt', (req, res) => {
-    res.status(200).type('html').send(CAPTIVE_PORTAL_HTML);
+    res.status(200).type('html').sendFile(SETUP_PAGE);
 });
 app.get('/ncsi.txt', (req, res) => {
-    res.status(200).type('html').send(CAPTIVE_PORTAL_HTML);
+    res.status(200).type('html').sendFile(SETUP_PAGE);
 });
 
 // Catch-all for any captive portal probe from unknown OS
 app.get('/redirect', (req, res) => {
-    res.redirect('http://192.168.4.1:8080/setup.html');
+    res.redirect('/setup.html');
 });
 
 // ========================================
