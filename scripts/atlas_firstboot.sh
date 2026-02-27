@@ -1288,6 +1288,18 @@ finalize_phase1() {
     rm -f /var/lib/dbus/machine-id 2>/dev/null || true
     log "  ✅ Machine-ID cleared (unique per clone)"
 
+    # Re-enable armbian-resize-filesystem for clones
+    # This service expands the rootfs partition to fill the entire SD card.
+    # It's one-shot + self-deleting: it ran during this Phase 1 boot and
+    # removed its own symlink from basic.target.wants. When we shrink + dd
+    # this image into a clone, the clone boots with a stuck 4G partition
+    # unless the service is re-enabled. This re-enable ensures every clone
+    # auto-expands on first boot without manual intervention.
+    mkdir -p /etc/systemd/system/basic.target.wants
+    ln -sf /lib/systemd/system/armbian-resize-filesystem.service \
+        /etc/systemd/system/basic.target.wants/
+    log "  ✅ Filesystem resize re-enabled (clones will auto-expand)"
+
     # Clean up cloned repo (saves ~100MB on cloned image)
     rm -rf /tmp/atlas_repo
 

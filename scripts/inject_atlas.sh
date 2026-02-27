@@ -144,20 +144,6 @@ main() {
     rm -f "$WORK_DIR/rootfs/root/.not_logged_in_yet"
     log "   ✅ Armbian gate file removed"
 
-    # ─── SAFEGUARD: Re-enable armbian-resize-filesystem ──────────────────
-    # This service expands the rootfs partition to fill the entire SD card.
-    # It's one-shot + self-deleting: after Phase 1 golden boot runs it, it
-    # removes its own symlink from basic.target.wants. When we shrink + dd
-    # the clone image, the symlink is already gone — so cloned cards would
-    # boot with a 4G partition and never expand (causing Esper enrollment
-    # to fail with "No space left on device"). Re-enabling here ensures
-    # every clone expands on first boot.
-    log "📋 Re-enabling filesystem resize for clones..."
-    mkdir -p "$WORK_DIR/rootfs/etc/systemd/system/basic.target.wants"
-    ln -sf /lib/systemd/system/armbian-resize-filesystem.service \
-        "$WORK_DIR/rootfs/etc/systemd/system/basic.target.wants/"
-    log "   ✅ armbian-resize-filesystem.service enabled"
-
     # Pre-set root password from secrets (so bypass_firstlogin isn't needed at boot)
     log "📋 Pre-setting root password..."
     local ROOT_PW
