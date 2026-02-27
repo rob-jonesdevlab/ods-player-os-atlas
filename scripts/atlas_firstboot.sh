@@ -516,8 +516,9 @@ OnUnitActiveSec=1800
 WantedBy=timers.target
 EOF
 
-    # Create /var/lib/ods/ for enrollment state
+    # Create /var/lib/ods/ for enrollment state (owned by signage — server.js writes here)
     mkdir -p /var/lib/ods
+    chown signage:signage /var/lib/ods
 
     # Enable all services
     systemctl daemon-reload
