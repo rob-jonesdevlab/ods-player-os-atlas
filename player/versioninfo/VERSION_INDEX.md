@@ -38,5 +38,9 @@ ods-atlas-golden-vMAJOR-PATCH-TAG.img
 | v7-0 | `ods-atlas-golden-v7-0-OPENBOX.img` | 2026-02-21 | 1.8G |
 | **v7-1** | `ods-atlas-golden-v7-1-OPENBOX.img` | 2026-02-21 | 1.8G |
 | **v7-2** | **`ods-atlas-golden-v7-2-OPENBOX.img`** | **2026-02-21** | **1.8G** |
+| v8-1-0 | `ods-atlas-golden-v8-1-0-FLASH.img` | 2026-02-22 | 1.8G |
+| v8-3-3 | `ods-atlas-golden-v8-3-3-PLAYER.img` | 2026-02-23 | 1.8G |
+| v9-0-0 | `ods-atlas-golden-v9-0-0-ORIGIN.img` | 2026-02-24 | 1.8G |
+| **v9-1-7** | **`ods-atlas-golden-v9-1-7-ORIGIN.img`** | **2026-02-26** | **1.8G** |
 
 See individual release notes in `v*.md` files.

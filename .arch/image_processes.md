@@ -116,6 +116,81 @@ This ensures you can always roll back to the last known-good state without rebui
 
 ---
 
+## Phase 2: Shrink + DD (Etcher-Ready Clone Image)
+
+**Purpose:** Create a compact `.img` file suitable for flashing to any SD card with Etcher. The image self-expands on first boot.
+
+**Tool:** `e2fsck` + `resize2fs -M` + `fdisk` + `dd`
+
+**Process:**
+1. After Phase 1 firstboot completes, insert SD card into jdl-mini-box
+2. Verify Phase 1 checks (Chromium, node, services, machine-id, resize symlink)
+3. Unmount all partitions
+4. `e2fsck -f` → filesystem check
+5. `resize2fs -M` → shrink filesystem to minimum used blocks
+6. `fdisk` → shrink partition to match filesystem + 5% buffer
+7. `dd` → copy only the used sectors to a compact `.img` file
+8. Output: `ods-atlas-clone-vN-P-TAG.img` (~4.5 GB)
+
+**When to use:**
+- Creating production deployment images after P:1 verification
+- Building flashable images for distribution
+
+**Key detail:** The `armbian-resize-filesystem` service is re-enabled by `finalize_phase1()` during Phase 1 completion. When a clone boots, this service auto-expands the partition to fill the entire SD card. Without this, clones boot with a stuck 4G partition.
+
+### Shrink + DD commands
+```bash
+# On jdl-mini-box — SD card in reader after P:1 completes
+# 1. Unmount
+sudo umount /media/jones-dev-lab/armbi_root1
+sudo umount /media/jones-dev-lab/RPICFG1
+
+# 2. Check + shrink filesystem
+sudo e2fsck -f -y /dev/sdc2
+sudo resize2fs -M /dev/sdc2
+
+# 3. Calculate new partition size
+BLOCK_COUNT=$(sudo dumpe2fs -h /dev/sdc2 2>/dev/null | grep "Block count" | awk '{print $3}')
+BLOCK_SIZE=$(sudo dumpe2fs -h /dev/sdc2 2>/dev/null | grep "Block size" | awk '{print $3}')
+FS_SECTORS=$((BLOCK_COUNT * BLOCK_SIZE / 512))
+BUFFER=$((FS_SECTORS * 5 / 100))
+NEW_SECTORS=$(( (FS_SECTORS + BUFFER + 7) / 8 * 8 ))
+P2_START=1056768
+P2_END=$((P2_START + NEW_SECTORS - 1))
+TOTAL=$((P2_END + 1))
+
+# 4. Shrink partition
+echo -e "d\n2\nn\np\n2\n${P2_START}\n${P2_END}\nw" | sudo fdisk /dev/sdc
+
+# 5. Verify
+sudo e2fsck -f -y /dev/sdc2
+
+# 6. DD clone
+sudo dd if=/dev/sdc of=~/atlas-build/ods-atlas-clone-vN-P-TAG.img \
+    bs=512 count=${TOTAL} status=progress
+
+# 7. Transfer to Mac
+scp ~/atlas-build/ods-atlas-clone-vN-P-TAG.img ~/Desktop/
+```
+
+### Verification checklist (run BEFORE shrink)
+```
+Phase: 2              ✅ Phase 1 ran
+Gate file: present    ✅ Phase 2 enrollment will run
+Chromium:             ✅ Installed
+node/npm/git:         ✅ Installed
+RustDesk:             ✅ Installed
+server.js:            ✅ Deployed
+node_modules:         ✅ 100+ packages
+ODS services:         ✅ 12 services
+Plymouth theme:       ✅ 138 files
+Machine-ID:           ✅ Cleared
+Firstboot enabled:    ✅ For Phase 2
+Resize service:       ✅ Re-enabled for clones
+```
+
+---
+
 ## Storage Locations
 
 | Location | Purpose |

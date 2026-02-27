@@ -24,7 +24,7 @@
 │       ├── ods-phase-selector.sh
 │       ├── ods-enrollment-boot.sh
 │       └── generate_splash_frames.sh
-└── ods-atlas-golden-v8-3-3-PLAYER.img                          # Output (built)
+└── ods-atlas-golden-v9-1-7-ORIGIN.img                          # Output (built)
 ```
 
 ### `atlas_secrets.conf` (in repo)
@@ -67,7 +67,7 @@ sudo -A rm -f ~/atlas-build/ods-atlas-golden-*.img
 cd ~/atlas-build/ods-player-os-atlas
 sudo -A bash scripts/inject_atlas.sh \
   /home/jones-dev-lab/atlas-build/Armbian_26.2.1_Rpi4b_trixie_current_6.18.9_minimal.img \
-  /home/jones-dev-lab/atlas-build/ods-atlas-golden-v8-3-3-PLAYER.img
+  /home/jones-dev-lab/atlas-build/ods-atlas-golden-v9-1-7-ORIGIN.img
 ```
 
 ### 5. Transfer to Mac
@@ -75,14 +75,14 @@ sudo -A bash scripts/inject_atlas.sh \
 # From Mac:
 export SSHPASS='mnbvcxz!!!'
 sshpass -e scp -o StrictHostKeyChecking=no \
-  jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-golden-v8-3-3-PLAYER.img ~/Desktop/
+  jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-golden-v9-1-7-ORIGIN.img ~/Desktop/
 ```
 
 ### 6. Flash to SD Card
-Use Raspberry Pi Imager or:
+Use Etcher (recommended) or:
 ```bash
 # macOS (find disk with diskutil list)
-sudo dd if=~/Desktop/ods-atlas-golden-v8-3-3-PLAYER.img of=/dev/rdiskN bs=4m status=progress
+sudo dd if=~/Desktop/ods-atlas-golden-v9-1-7-ORIGIN.img of=/dev/rdiskN bs=4m status=progress
 ```
 
 ### 7. First Boot
@@ -134,6 +134,10 @@ sshpass -e ssh -o StrictHostKeyChecking=no root@10.111.123.102 'reboot'
 | SSH permission denied on dev device | Using build server password | Check `atlas_secrets.conf` for device root password |
 | Overlay shows tiny image at 1080p | 4K PNG displayed without resize | Already fixed in wrapper — uses `convert -resize` |
 | Splash frames not updating on device | Old files in Plymouth theme dir | Clean old files before deploying new ones |
+| `apt-get install` fails with 404 on Chromium | Clock skew — Pi clock at image date, signatures rejected | NTP sync in `wait_for_network()` before apt |
+| `set -e` aborts firstboot silently | Any non-zero return kills the script | Replaced with `set -o pipefail` + ERR trap |
+| Cloned card doesn't expand partition | `armbian-resize-filesystem` self-deletes after P:1 boot | `finalize_phase1()` re-enables the service |
+| Esper enrollment fails with 'No space left' | Partition stuck at 4G — resize didn't run | See above — resize service re-enable fix |
 
 ## Version Naming
 

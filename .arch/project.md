@@ -1,8 +1,8 @@
 # ODS Player OS Atlas — Architecture
 
-**Last Updated:** February 24, 2026  
-**Current Version:** v9-0-0-ORIGIN  
-**Status:** P:0 built — kiosk terminology removed, player naming established, ready for ODS Cloud pivot
+**Last Updated:** February 26, 2026  
+**Current Version:** v9-1-7-ORIGIN  
+**Status:** Production-ready P:0 → P:1 → P:2 pipeline — 7 root cause fixes, Chromium + Esper verified, clone auto-expand confirmed
 
 ---
 
@@ -19,7 +19,7 @@ ODS Player OS Atlas converts a Raspberry Pi 4b running Armbian into a locked-dow
 │ ODS Player OS Atlas (this repo)                 │
 │ → Express server (port 8080)                    │
 │ → Chromium --app mode (X11 fullscreen)          │
-│ → systemd services (9 production services)      │
+│ → systemd services (12 production services)     │
 │ → Boot UX pipeline (Plymouth → FBI → Xorg)     │
 ├─────────────────────────────────────────────────┤
 │ Armbian 26.2.1 Trixie (RPi4b)                  │
@@ -51,10 +51,14 @@ P:0 (Insert)         P:1 (Clone)          P:2 (Enrollment)     P:3 (Production)
 
 See `.arch/image_processes.md` for detailed build commands and `.arch/build_guide.md` for step-by-step instructions.
 
-## Current State (v8-3-3)
+## Current State (v9-1-7)
 
 ### Completed — Core
-- ✅ 11-step automated firstboot (`atlas_firstboot.sh`, ~1280 lines)
+- ✅ 11-step automated firstboot (`atlas_firstboot.sh`, ~1400 lines)
+- ✅ NTP clock sync before apt — prevents signature verification failures from clock skew
+- ✅ Resilient batched package install — 3 batches with `--fix-missing` and retry logic
+- ✅ Chromium install retry — separate batch with fresh `apt-get update` on failure
+- ✅ Filesystem resize re-enable — `finalize_phase1()` re-enables self-deleting Armbian resize service for clones
 - ✅ TTY flash fix — VT1 pre-painted black (tty1-3 + framebuffer + kernel printk)
 - ✅ Grey flash fix — overlay window hides Chromium compositor surface
 - ✅ Plymouth hold — `ods-plymouth-hold.service` blocks `plymouth-quit` until player ready
@@ -65,7 +69,7 @@ See `.arch/image_processes.md` for detailed build commands and `.arch/build_guid
 - ✅ System config shortcut — `Ctrl+Alt+Shift+O` opens diagnostics panel
 - ✅ Sleep prevention — `consoleblank=0`, DPMS off, suspend/hibernate masked
 - ✅ RustDesk remote access — self-hosted relay, systemd service
-- ✅ Esper MDM enrollment — Phase 2 sealed-in-splash enrollment boot
+- ✅ Esper MDM enrollment — Phase 2 sealed-in-splash enrollment boot (verified end-to-end)
 - ✅ Health monitor service
 - ✅ Boot diagnostics — systemd journal capture per boot
 - ✅ Chromium `--app` mode (not `--kiosk`) for overlay compatibility
@@ -83,13 +87,27 @@ See `.arch/image_processes.md` for detailed build commands and `.arch/build_guid
 - ✅ `brand/splash/generated/` — single source of truth for all splash assets
 - ✅ Enrollment race condition fix — lock file + `Restart=no` override during enrollment
 
-### Completed — v8-3 Terminology & Infrastructure
+### Completed — v8-3 / v9 Terminology & Infrastructure
 - ✅ **Removed all "kiosk" terminology** — replaced with "player" naming
 - ✅ Overlay 4K→1080p resize fix — `convert -resize` before `display` for multi-res support
 - ✅ Deleted legacy v12 wrapper and start scripts (dead code)
 - ✅ Naming convention: boot files omit ATLAS tag (universal), OS-specific files include ATLAS
 - ✅ Directory consolidation — removed redundant `assets/plymouth/ods/`
 - ✅ 5-frame standard enforced across all splash animations
+- ✅ ODS-owned gate file (`/var/lib/ods/atlas_firstboot_pending`) — prevents Armbian first-login race
+- ✅ `set -e` replaced with `set -o pipefail` + ERR trap (logs line numbers instead of silent abort)
+- ✅ 12 systemd ODS services (was 9 — added enrollment retry, DPMS enforce timer, hide-tty)
+
+### 7 Root Cause Fixes (v9-1-0 → v9-1-7)
+
+| # | Root Cause | Fix | Commit |
+|---|-----------|-----|--------|
+| 1 | Armbian `armbian-firstlogin` deletes gate file — blocks firstboot | ODS-owned gate file + mask Armbian first-login | `7b82395` |
+| 2 | `After=network-online.target` blocks forever without ethernet | `After=basic.target` + script-level `wait_for_network()` | `ef98b61` |
+| 3 | `set -e` silently kills 1400-line script on any non-zero return | `set -o pipefail` + ERR trap with line numbers | `6ab2af1` |
+| 4 | Single `apt-get install` batch — one 404 cascades to skip all packages | 3 resilient batches with `--fix-missing` | `ddc498e` |
+| 5 | Clock skew (Pi clock at image date) → apt signature check fails → stale index → Chromium 404 | NTP sync before apt + Chromium retry with fresh `apt-get update` | `c568e7b` |
+| 6 | `armbian-resize-filesystem` self-deletes symlink after P:1 → clones stuck at 4G | `finalize_phase1()` re-enables resize service before shutdown | `054a3d0` |
 
 ### Golden Image History
 
@@ -104,25 +122,25 @@ Complete lineage of every P:0 golden image ever built:
 | v5-0 | NATIVE | 2/16/26 | Native Armbian integration (dropped legacy wrappers) |
 | v6-0 | SPLASH | 2/18/26 | Plymouth boot splash, TTY hide, sleep prevention |
 | v7-0 | OPENBOX | 2/21/26 | Window manager, Chromium `--app` mode, grey flash hunt begins |
-| v7-1 through v7-4 | OPENBOX | 2/21/26 | Grey flash iterations — dark theme, xsetroot, VT fixes |
+| v7-1 — v7-4 | OPENBOX | 2/21/26 | Grey flash iterations — dark theme, xsetroot, VT fixes |
 | v7-5 | OPENBOX | 2/21/26 | Admin auth + Chromium managed policy (611 MB — minimal build) |
 | v7-6 | OPENBOX | 2/21/26 | su/PAM auth (yescrypt-safe), dark GTK |
-| v7-7 | OPENBOX | 2/21/26 | Removed `--force-dark-mode` (was painting grey), delayed plymouth quit |
-| v7-8 | OPENBOX | 2/21/26 | Removed `-background none` (grey stipple), xsetroot repaint |
-| v7-9 | OPENBOX | 2/21/26 | Unmasked plymouth-quit, reverted VT7→VT1 |
+| v7-7 — v7-9 | OPENBOX | 2/21/26 | Dark mode / VT / plymouth-quit iterations |
 | v7-10 | OPENBOX | 2/21/26 | ROOT CAUSE: boot started 26s after plymouth-quit, service dep fix |
-| v7-11 | OPENBOX | 2/21/26 | Continuous xsetroot repaint loop (covers modeset resets) |
-| v7-12 | OPENBOX | 2/21/26 | fbi bridge animation, FBI→Xorg handoff |
-| v7-13 | OPENBOX | 2/21/26 | Splash overlay approach — Openbox BOOT_OVERLAY rule |
-| v7-14-0 | OPENBOX | 2/21/26 | Full animated pipeline (Plymouth → FBI → splash → overlay) |
-| v7-14-1 | OPENBOX | 2/22/26 | Hotfix: throbber alignment, animation timing |
+| v7-11 — v7-13 | OPENBOX | 2/21/26 | xsetroot repaint loop, FBI bridge, overlay approach |
+| v7-14-0/1 | OPENBOX | 2/21-22/26 | Full animated pipeline (Plymouth → FBI → splash → overlay) |
 | v8-1-0 | FLASH | 2/22/26 | Premium boot UX: 104 PNGs, 4K watermark, 5-frame FBI, throbber .90 |
-| v8-2-0 | FLASH | 2/22/26 | Secrets symlink, Plymouth .90/.5 config, generated assets path |
-| v8-2-1 | FLASH | 2/22/26 | 4K watermark fix, enrollment 5-frame splash, HD purge |
-| v8-2-2 | FLASH | 2/22/26 | Sync all 133 4K PNGs, throbber 106x106, Esper state cleanup |
-| v8-2-3 | FLASH | 2/22/26 | CRITICAL: Fix enrollment killed after 6s by service restart |
-| v8-2-4 | FLASH | 2/23/26 | Security: Remove --no-sandbox, Chromium runs as signage user |
-| **v9-0-0** | **ORIGIN** | **2/24/26** | **Major: Removed kiosk terminology, player naming, 5-frame standard, multi-res overlay, consolidated assets, comprehensive docs refresh** |
+| v8-2-0 — v8-2-4 | FLASH | 2/22-23/26 | Secrets, enrollment fixes, security hardening |
+| v8-3-2/3 | FLASH | 2/23/26 | Multi-res overlay, 5-frame standard, kiosk→player rename |
+| v9-0-0 | ORIGIN | 2/24/26 | Major: player naming, consolidated assets, docs refresh |
+| v9-1-0 | ORIGIN | 2/26/26 | Fix: ODS gate file + disable Armbian first-login |
+| v9-1-1 | ORIGIN | 2/26/26 | Fix: `After=basic.target` + script-level network wait |
+| v9-1-2 | ORIGIN | 2/26/26 | Fix: Replace `set -e` with ERR trap |
+| v9-1-3 | ORIGIN | 2/26/26 | Fix: Batched apt install (3 resilient batches) |
+| v9-1-4 | ORIGIN | 2/26/26 | Fix: `--fix-missing` + retry on batch failures |
+| v9-1-5 | ORIGIN | 2/26/26 | Fix: NTP clock sync + Chromium retry with fresh apt update |
+| v9-1-6 | ORIGIN | 2/26/26 | Fix: Re-enable resize in inject (interim — replaced in v9-1-7) |
+| **v9-1-7** | **ORIGIN** | **2/26/26** | **Fix: `finalize_phase1()` re-enables resize service — proper fix. Clean P:0** |
 
 ### Commit History (v8-v9)
 
@@ -138,13 +156,23 @@ Complete lineage of every P:0 golden image ever built:
 | v8-3-2 | `b3cb640` | Fix overlay tiny mirror — resize 4K PNGs to detected screen res |
 | v8-3-3 | `e417033` | Remove kiosk terminology — rename to player/ATLAS convention |
 | v9-0-0 | `7ab906c` | Docs refresh + P:0 golden image build as ORIGIN |
+| v9-1-0 | `7b82395` | ODS gate file + disable Armbian first-login |
+| v9-1-1 | `ef98b61` | `After=basic.target` + script-level `wait_for_network()` |
+| v9-1-2 | `6ab2af1` | Replace `set -e` with `set -o pipefail` + ERR trap |
+| v9-1-3 | `ddc498e` | 3 resilient apt batches with `--fix-missing` |
+| v9-1-5 | `c568e7b` | NTP clock sync + Chromium retry with fresh `apt-get update` |
+| v9-1-6 | `bd7c668` | Re-enable resize in inject (interim bandaid) |
+| **v9-1-7** | **`054a3d0`** | **`finalize_phase1()` re-enables resize service — proper fix** |
 
 ### Pending / Next Version
-- [x] P:0 golden image rebuild → **v9-0-0-ORIGIN**
-- [ ] Validate Esper enrollment end-to-end on fresh P:0 flash
-- [ ] ODS Cloud — Account, Content, Device, User management
+- [x] P:0 golden image rebuild → **v9-1-7-ORIGIN**
+- [x] Validate Esper enrollment end-to-end on fresh P:0 flash
+- [x] Validate Chromium installation with NTP clock sync
+- [x] Validate clone auto-expand on first boot
+- [ ] ODS Cloud — Content delivery pipeline (cloud-sync, cache-manager)
 - [ ] OTA updates from ODS Cloud dashboard
 - [ ] Remote background/content push
+- [ ] Offline mode via local cache management
 - [ ] Wayland/Cage migration for zero-flash boot
 
 ## Script Architecture
@@ -164,7 +192,7 @@ Complete lineage of every P:0 golden image ever built:
 | Script | Runs On | Purpose |
 |--------|---------|---------|
 | `inject_atlas.sh` | jdl-mini-box / Lima | P:0 image builder (loop-mount inject) |
-| `atlas_firstboot.sh` | Target device | 11-step provisioning on first boot |
+| `atlas_firstboot.sh` | Target device | 11-step provisioning on first boot (~1400 lines) |
 | `ods-phase-selector.sh` | Target device | Routes Phase 2 (enrollment) vs Phase 3 (production) |
 | `ods-player-boot-wrapper.sh` | Target device | Full premium boot pipeline orchestrator |
 | `start-player-os-ATLAS.sh` | Target device | Chromium `--app` mode launcher |
