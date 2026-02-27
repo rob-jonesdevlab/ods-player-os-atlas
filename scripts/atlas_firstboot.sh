@@ -160,7 +160,7 @@ install_packages() {
     done
 
     # ── Batch 1: Critical infrastructure (must succeed for deploy_atlas) ──
-    log "  → Batch 1: Critical infrastructure (git, node, npm, curl)..."
+    log "  → Batch 1: Critical infrastructure (git, node, npm, curl, wifi tools)..."
     apt-get install -y --fix-missing \
         git \
         nodejs \
@@ -170,6 +170,11 @@ install_packages() {
         jq \
         bc \
         dnsutils \
+        iw \
+        wpasupplicant \
+        wireless-tools \
+        rfkill \
+        sudo \
         2>&1 | tee -a "$LOG_FILE"
 
     if command -v git &>/dev/null && command -v node &>/dev/null; then
@@ -249,6 +254,29 @@ create_users() {
     else
         log "  ℹ️  signage user already exists"
     fi
+
+    # Create sudoers file for signage — server.js needs these for WiFi, reboot, etc.
+    cat > /etc/sudoers.d/signage << 'SUDOEOF'
+# ODS Player OS — signage user privileges
+# server.js runs as signage and needs passwordless sudo for:
+#   WiFi: ip link, iw, wpa_cli
+#   System: reboot, shutdown, systemctl
+#   Auth: ods-auth-check.sh
+# Cover all binary path variants (Armbian symlinks /sbin→/usr/bin)
+signage ALL=(ALL) NOPASSWD: /usr/bin/ip link set wlan0 *
+signage ALL=(ALL) NOPASSWD: /usr/sbin/ip link set wlan0 *
+signage ALL=(ALL) NOPASSWD: /sbin/ip link set wlan0 *
+signage ALL=(ALL) NOPASSWD: /usr/bin/iw dev wlan0 *
+signage ALL=(ALL) NOPASSWD: /usr/sbin/iw dev wlan0 *
+signage ALL=(ALL) NOPASSWD: /usr/bin/wpa_cli *
+signage ALL=(ALL) NOPASSWD: /usr/sbin/wpa_cli *
+signage ALL=(ALL) NOPASSWD: /usr/sbin/reboot
+signage ALL=(ALL) NOPASSWD: /usr/sbin/shutdown *
+signage ALL=(ALL) NOPASSWD: /usr/bin/systemctl status *
+signage ALL=(ALL) NOPASSWD: /usr/local/bin/ods-auth-check.sh *
+SUDOEOF
+    chmod 0440 /etc/sudoers.d/signage
+    log "  ✅ signage sudoers created (WiFi, reboot, systemctl)"
 
     # Create otter admin user with sudo
     if ! id otter >/dev/null 2>&1; then
