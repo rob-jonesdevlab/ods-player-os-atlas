@@ -79,11 +79,10 @@
 
     <!-- Main Content — pb-44 ensures card stays above the status pill at 90% -->
     <main class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-44 z-10">
-        <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl"
-            style="max-width: 520px;">
+        <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl w-auto">
             <!-- Title -->
             <h2 class="text-4xl font-bold mb-2 whitespace-nowrap" style="color: #1a1a2e;">Network Setup</h2>
-            <p class="mb-8 text-center text-2xl font-semibold" style="color: #1a1a2e;">
+            <p class="mb-8 text-center text-2xl font-semibold whitespace-nowrap" style="color: #1a1a2e;">
                 Scan QR code to configure WiFi
             </p>
 
@@ -92,9 +91,8 @@
 
             <!-- Device Name -->
             <p class="text-3xl font-bold mb-2" id="ap-ssid" style="color: #1a1a2e;">ODS Player</p>
-            <p class="text-lg font-semibold mb-4" style="color: #1a1a2e; opacity: 0.7;">Scan to connect &bull; setup
-                opens
-                automatically</p>
+            <p class="text-lg font-semibold mb-4 whitespace-nowrap" style="color: #1a1a2e; opacity: 0.7;">Scan to
+                connect &bull; setup opens automatically</p>
         </div>
     </main>
 

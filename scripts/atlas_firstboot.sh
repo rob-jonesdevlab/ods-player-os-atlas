@@ -316,15 +316,19 @@ WPAEOF
 
     mkdir -p /etc/hostapd
     cat > /etc/hostapd/hostapd-setup.conf << EOF
+# ODS Setup AP — visible open network for phone QR setup
 interface=wlan0
 driver=nl80211
 ssid=$AP_SSID
+country_code=US
 hw_mode=g
-channel=7
+channel=6
+ieee80211n=1
 wmm_enabled=0
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
+max_num_sta=5
 EOF
 
     cat > /etc/dnsmasq.d/ods-setup.conf << 'DNSEOF'

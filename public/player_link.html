@@ -121,7 +121,7 @@
     <!-- Pairing State -->
     <main id="pairingState" class="flex-1 flex flex-col items-center justify-center w-full px-4 pb-44 z-10"
         style="display: none;">
-        <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl">
+        <div class="glass-card rounded-2xl p-10 md:p-14 flex flex-col items-center shadow-2xl w-auto">
             <!-- QR Code Section -->
             <div id="qrcodeContainer" class="bg-white p-3 rounded-xl shadow-lg mb-10">
                 <div id="qrcode"></div>
@@ -129,7 +129,8 @@
 
             <!-- Pairing Code -->
             <div class="flex flex-col items-center mb-10">
-                <span class="text-lg font-semibold mb-2 tracking-wide uppercase" style="color: #1a1a2e;">Pairing
+                <span class="text-lg font-semibold mb-2 tracking-wide uppercase whitespace-nowrap"
+                    style="color: #1a1a2e;">Pairing
                     Code</span>
                 <h2 id="pairingCodeDisplay" class="font-mono text-[72px] leading-none font-bold tracking-wider"
                     style="color: #1a1a2e;">
@@ -138,13 +139,13 @@
             </div>
 
             <!-- Instructions -->
-            <div class="w-full max-w-md">
+            <div class="w-full">
                 <div class="space-y-4">
                     <div class="flex items-start gap-4 group">
                         <div
                             class="flex-shrink-0 w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-base border border-primary/30">
                             1</div>
-                        <p class="text-xl leading-snug" style="color: #1a1a2e;">
+                        <p class="text-xl leading-snug whitespace-nowrap" style="color: #1a1a2e;">
                             Scan the QR code or visit <span class="text-primary font-medium">ods-cloud.com/pair</span>
                         </p>
                     </div>
@@ -152,7 +153,7 @@
                         <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-base border border-gray-200 group-hover:bg-primary/10 group-hover:text-primary transition-colors"
                             style="color: #1a1a2e;">
                             2</div>
-                        <p class="text-xl leading-snug" style="color: #1a1a2e;">
+                        <p class="text-xl leading-snug whitespace-nowrap" style="color: #1a1a2e;">
                             Log in to your account
                         </p>
                     </div>
@@ -160,7 +161,7 @@
                         <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-base border border-gray-200 group-hover:bg-primary/10 group-hover:text-primary transition-colors"
                             style="color: #1a1a2e;">
                             3</div>
-                        <p class="text-xl leading-snug" style="color: #1a1a2e;">
+                        <p class="text-xl leading-snug whitespace-nowrap" style="color: #1a1a2e;">
                             Enter the code above to register this screen
                         </p>
                     </div>
