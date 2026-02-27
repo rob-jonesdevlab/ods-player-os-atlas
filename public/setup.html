@@ -6,34 +6,22 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <style>
-        :root {
-            --bg-primary: #0f172a;
-            --bg-card: rgba(30, 41, 59, 0.85);
-            --bg-input: rgba(51, 65, 85, 0.6);
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --accent: #3b82f6;
-            --accent-glow: rgba(59, 130, 246, 0.25);
-            --border: rgba(148, 163, 184, 0.15);
-            --success: #10b981;
-            --error: #ef4444;
-            --radius: 16px;
-        }
-
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
 
+        html,
         body {
-            background: var(--bg-primary);
-            background-image:
-                radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+            background-color: #000 !important;
+        }
+
+        body {
+            background: url('/resources/designs/ods-wallpaper.png') center/cover no-repeat fixed;
+            background-color: #000;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            color: var(--text-primary);
+            color: #1a1a2e;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -42,24 +30,22 @@
             padding: 20px;
         }
 
+        /* ── Brand ── */
         .brand {
             text-align: center;
             margin-bottom: 24px;
         }
 
         .brand-logo {
-            font-size: 40px;
-            font-weight: 700;
+            font-size: 44px;
+            font-weight: 800;
+            color: #ffffff;
             letter-spacing: -1px;
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
         .brand-sub {
             font-size: 13px;
-            color: var(--text-muted);
+            color: rgba(255, 255, 255, 0.5);
             margin-top: 4px;
             letter-spacing: 2px;
             text-transform: uppercase;
@@ -67,55 +53,52 @@
 
         .device-name {
             font-size: 12px;
-            color: var(--accent);
+            color: #3c83f6;
             margin-top: 8px;
             font-weight: 600;
             letter-spacing: 1px;
         }
 
-        .card {
+        /* ── Glass Card — matches network_setup.html exactly ── */
+        .glass-card {
             width: 100%;
             max-width: 400px;
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.88) 0%,
+                    rgba(255, 255, 255, 0.78) 50%,
+                    rgba(255, 255, 255, 0.85) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.12),
+                0 2px 8px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            border-radius: 16px;
             padding: 28px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
+        /* ── Card Header ── */
         .card-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            text-align: center;
             margin-bottom: 24px;
             padding-bottom: 16px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .card-header .icon {
-            width: 44px;
-            height: 44px;
-            background: var(--accent-glow);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
+            border-bottom: 1px solid rgba(26, 26, 46, 0.1);
         }
 
         .card-header h2 {
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a1a2e;
         }
 
         .card-header p {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 2px;
+            font-size: 14px;
+            color: #1a1a2e;
+            opacity: 0.7;
+            margin-top: 4px;
+            font-weight: 500;
         }
 
+        /* ── Progress Steps ── */
         .steps {
             display: flex;
             gap: 8px;
@@ -125,19 +108,20 @@
         .step {
             flex: 1;
             height: 3px;
-            background: var(--border);
+            background: rgba(26, 26, 46, 0.12);
             border-radius: 3px;
             transition: background 0.3s;
         }
 
         .step.active {
-            background: var(--accent);
+            background: #3c83f6;
         }
 
         .step.done {
-            background: var(--success);
+            background: #10b981;
         }
 
+        /* ── Form ── */
         .form-group {
             margin-bottom: 16px;
         }
@@ -146,19 +130,20 @@
             display: block;
             font-size: 12px;
             font-weight: 600;
-            color: var(--text-secondary);
+            color: #1a1a2e;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
+            opacity: 0.7;
         }
 
         .form-group input {
             width: 100%;
             padding: 14px 16px;
-            background: var(--bg-input);
-            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(26, 26, 46, 0.15);
             border-radius: 10px;
-            color: var(--text-primary);
+            color: #1a1a2e;
             font-family: inherit;
             font-size: 15px;
             transition: border-color 0.2s, box-shadow 0.2s;
@@ -168,12 +153,12 @@
 
         .form-group input:focus {
             outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-glow);
+            border-color: #3c83f6;
+            box-shadow: 0 0 0 3px rgba(60, 131, 246, 0.2);
         }
 
         .form-group input::placeholder {
-            color: var(--text-muted);
+            color: rgba(26, 26, 46, 0.4);
         }
 
         .password-wrapper {
@@ -181,7 +166,7 @@
         }
 
         .password-wrapper input {
-            padding-right: 48px;
+            padding-right: 56px;
         }
 
         .password-toggle {
@@ -191,18 +176,20 @@
             transform: translateY(-50%);
             background: none;
             border: none;
-            color: var(--text-muted);
+            color: rgba(26, 26, 46, 0.5);
             cursor: pointer;
             padding: 4px;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 600;
             width: auto;
         }
 
+        /* ── Blue Connect Button ── */
         .btn-primary {
             width: 100%;
             padding: 16px;
-            background: linear-gradient(135deg, var(--accent), #6366f1);
-            color: white;
+            background: #3c83f6;
+            color: #ffffff;
             border: none;
             border-radius: 12px;
             font-family: inherit;
@@ -214,8 +201,9 @@
         }
 
         .btn-primary:hover {
+            background: #2563eb;
             transform: translateY(-1px);
-            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+            box-shadow: 0 4px 16px rgba(60, 131, 246, 0.35);
         }
 
         .btn-primary:disabled {
@@ -224,6 +212,7 @@
             transform: none;
         }
 
+        /* ── Status Messages ── */
         .status {
             margin-top: 16px;
             padding: 14px 16px;
@@ -237,28 +226,29 @@
             display: block;
             background: rgba(16, 185, 129, 0.12);
             border: 1px solid rgba(16, 185, 129, 0.25);
-            color: var(--success);
+            color: #059669;
         }
 
         .status.error {
             display: block;
             background: rgba(239, 68, 68, 0.12);
             border: 1px solid rgba(239, 68, 68, 0.25);
-            color: var(--error);
+            color: #dc2626;
         }
 
         .status.connecting {
             display: block;
-            background: rgba(59, 130, 246, 0.12);
-            border: 1px solid rgba(59, 130, 246, 0.25);
-            color: var(--accent);
+            background: rgba(60, 131, 246, 0.1);
+            border: 1px solid rgba(60, 131, 246, 0.2);
+            color: #2563eb;
         }
 
+        /* ── Footer ── */
         .footer {
             text-align: center;
             margin-top: 20px;
             font-size: 11px;
-            color: var(--text-muted);
+            color: rgba(255, 255, 255, 0.35);
         }
 
         @keyframes pulse {
@@ -286,13 +276,10 @@
         <div class="device-name" id="deviceName"></div>
     </div>
 
-    <div class="card">
+    <div class="glass-card">
         <div class="card-header">
-            <div class="icon">📶</div>
-            <div>
-                <h2>Network Setup</h2>
-                <p>Connect this player to your WiFi</p>
-            </div>
+            <h2>Network Setup</h2>
+            <p>Connect this player to your WiFi</p>
         </div>
 
         <div class="steps">
@@ -328,9 +315,15 @@
 
     <script>
         // Load device name
-        fetch('/api/device/info').then(r => r.json()).then(d => {
-            if (d.three_word_name) document.getElementById('deviceName').textContent = d.three_word_name.toUpperCase();
-        }).catch(() => { });
+        var xhr0 = new XMLHttpRequest();
+        xhr0.open('GET', '/api/device/info', true);
+        xhr0.onload = function () {
+            try {
+                var d = JSON.parse(xhr0.responseText);
+                if (d.three_word_name) document.getElementById('deviceName').textContent = d.three_word_name.toUpperCase();
+            } catch (e) { }
+        };
+        xhr0.send();
 
         function togglePassword() {
             var input = document.getElementById('password');
@@ -376,7 +369,7 @@
                         document.getElementById('step2').className = 'step done';
                         document.getElementById('step3').className = 'step done';
                         status.className = 'status success';
-                        status.textContent = '✅ Connected! Player is joining your network. You can close this page.';
+                        status.textContent = 'Connected! Player is joining your network. You can close this page.';
                         btn.textContent = 'Done';
                     } else {
                         throw new Error(data.error || 'Connection failed');
@@ -384,14 +377,14 @@
                 } catch (err) {
                     document.getElementById('step2').className = 'step';
                     status.className = 'status error';
-                    status.textContent = '❌ ' + err.message;
+                    status.textContent = err.message;
                     btn.disabled = false;
                     btn.textContent = 'Retry';
                 }
             };
             xhr.onerror = function () {
                 status.className = 'status error';
-                status.textContent = '❌ Network error — please try again';
+                status.textContent = 'Network error — please try again';
                 btn.disabled = false;
                 btn.textContent = 'Retry';
             };

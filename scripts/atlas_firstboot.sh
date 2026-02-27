@@ -387,7 +387,7 @@ deploy_atlas() {
 
     # Clone repository
     cd /tmp
-    git clone "https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/rob-jonesdevlab/ods-player-os-atlas.git" atlas_repo 2>&1 | tee -a "$LOG_FILE"
+    git clone "https://$GITHUB_USERNAME:$GITHUB_TOKEN@github.com/rob-jonesdevlab/ods-player-atlas.git" atlas_repo 2>&1 | tee -a "$LOG_FILE"
 
     # Copy application files to /home/signage/ODS
     cp -r atlas_repo/public /home/signage/ODS/
