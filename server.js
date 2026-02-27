@@ -559,6 +559,73 @@ app.get('/api/wifi/state', (req, res) => {
     });
 });
 
+// Configure static IP or switch to DHCP
+app.post('/api/network/configure', (req, res) => {
+    const { interface: iface, mode, ip, subnet, gateway, dns } = req.body;
+
+    // Determine the actual Linux interface name
+    let linuxIface;
+    if (iface === 'ethernet') {
+        // Check if end0 or eth0 exists
+        try {
+            require('child_process').execSync('ip link show end0 2>/dev/null');
+            linuxIface = 'end0';
+        } catch {
+            linuxIface = 'eth0';
+        }
+    } else if (iface === 'wifi') {
+        linuxIface = 'wlan0';
+    } else {
+        return res.status(400).json({ error: 'Invalid interface' });
+    }
+
+    // If switching to DHCP
+    if (mode === 'dhcp') {
+        exec(`sudo ip addr flush dev ${linuxIface} && sudo dhclient ${linuxIface} 2>/dev/null`, { timeout: 15000 }, (error) => {
+            if (error) return res.status(500).json({ error: 'Failed to switch to DHCP' });
+            res.json({ success: true, message: `${iface} switched to DHCP` });
+        });
+        return;
+    }
+
+    // Static IP configuration
+    if (!ip || !subnet || !gateway) {
+        return res.status(400).json({ error: 'IP, Subnet, and Gateway are required for static config' });
+    }
+
+    // Convert subnet mask (255.255.255.0) to CIDR (/24)
+    function subnetToCidr(mask) {
+        if (/^\d+$/.test(mask)) return mask; // Already CIDR
+        return mask.split('.').reduce((c, o) => c + (parseInt(o) >>> 0).toString(2).split('1').length - 1, 0);
+    }
+    const cidr = subnetToCidr(subnet);
+
+    // Build command sequence
+    const cmds = [
+        `sudo ip addr flush dev ${linuxIface}`,
+        `sudo ip addr add ${ip}/${cidr} dev ${linuxIface}`,
+        `sudo ip link set ${linuxIface} up`,
+        `sudo ip route add default via ${gateway} dev ${linuxIface} 2>/dev/null || sudo ip route replace default via ${gateway} dev ${linuxIface}`
+    ];
+
+    // Update DNS if provided
+    if (dns) {
+        cmds.push(`echo 'nameserver ${dns}' | sudo tee /etc/resolv.conf > /dev/null`);
+    }
+
+    const fullCmd = cmds.join(' && ');
+    console.log(`[NET] Applying static config to ${linuxIface}: ${ip}/${cidr} gw ${gateway} dns ${dns || 'unchanged'}`);
+
+    exec(fullCmd, { timeout: 10000 }, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`[NET] Static config failed:`, stderr);
+            return res.status(500).json({ error: 'Failed to apply static config: ' + (stderr || error.message) });
+        }
+        console.log(`[NET] Static config applied to ${linuxIface}`);
+        res.json({ success: true, message: `Static IP ${ip}/${cidr} applied to ${iface}` });
+    });
+});
+
 // ========================================
 // PAGE READY SIGNAL (for Plymouth transition)
 // ========================================

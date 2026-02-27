@@ -319,27 +319,44 @@
                             <span id="eth-role" class="text-xs"></span>
                         </div>
                         <div class="space-y-2 text-sm border-t border-slate-600/50 pt-3">
-                            <div class="flex justify-between">
-                                <span class="text-slate-400">IP Address</span>
-                                <span id="eth-ip" class="text-slate-200 font-mono">—</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-400">Subnet</span>
-                                <span id="eth-subnet" class="text-slate-200 font-mono">—</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-400">Gateway</span>
-                                <span id="eth-gateway" class="text-slate-200 font-mono">—</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-400">DNS</span>
-                                <span id="eth-dns" class="text-slate-200 font-mono text-xs">—</span>
-                            </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-slate-400">Type</span>
-                                <span id="eth-type"
-                                    class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400">DHCP</span>
+                                <select id="eth-type-select"
+                                    class="bg-slate-600 text-white text-xs rounded px-2 py-1 border border-slate-500 focus:border-primary outline-none cursor-pointer"
+                                    onchange="toggleNetworkMode('eth')">
+                                    <option value="dhcp">DHCP</option>
+                                    <option value="static">Static</option>
+                                </select>
                             </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">IP Address</span>
+                                <span id="eth-ip" class="text-slate-200 font-mono eth-dhcp-field">—</span>
+                                <input id="eth-ip-input" type="text" placeholder="192.168.1.100"
+                                    class="hidden eth-static-field bg-slate-600 text-white text-xs font-mono rounded px-2 py-1 border border-slate-500 focus:border-primary outline-none w-28 text-right">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Subnet</span>
+                                <span id="eth-subnet" class="text-slate-200 font-mono eth-dhcp-field">—</span>
+                                <input id="eth-subnet-input" type="text" placeholder="255.255.255.0"
+                                    class="hidden eth-static-field bg-slate-600 text-white text-xs font-mono rounded px-2 py-1 border border-slate-500 focus:border-primary outline-none w-28 text-right">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Gateway</span>
+                                <span id="eth-gateway" class="text-slate-200 font-mono eth-dhcp-field">—</span>
+                                <input id="eth-gateway-input" type="text" placeholder="192.168.1.1"
+                                    class="hidden eth-static-field bg-slate-600 text-white text-xs font-mono rounded px-2 py-1 border border-slate-500 focus:border-primary outline-none w-28 text-right">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">DNS</span>
+                                <span id="eth-dns" class="text-slate-200 font-mono text-xs eth-dhcp-field">—</span>
+                                <input id="eth-dns-input" type="text" placeholder="8.8.8.8"
+                                    class="hidden eth-static-field bg-slate-600 text-white text-xs font-mono rounded px-2 py-1 border border-slate-500 focus:border-primary outline-none w-28 text-right">
+                            </div>
+                            <button id="eth-save-btn" onclick="saveStaticConfig('eth')"
+                                class="hidden eth-static-field w-full mt-2 px-3 py-1.5 bg-primary hover:bg-blue-600 rounded text-white text-xs font-medium transition-colors">
+                                Apply Static Config
+                            </button>
+                            <p id="eth-save-status" class="text-xs text-center mt-1 hidden"></p>
                         </div>
                     </div>
                     <!-- WiFi Card -->
@@ -361,27 +378,44 @@
                             <span id="wifi-role" class="text-xs"></span>
                         </div>
                         <div class="space-y-2 text-sm border-t border-slate-600/50 pt-3">
-                            <div class="flex justify-between">
-                                <span class="text-slate-400">IP Address</span>
-                                <span id="wifi-ip" class="text-slate-200 font-mono">—</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-400">Subnet</span>
-                                <span id="wifi-subnet" class="text-slate-200 font-mono">—</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-400">Gateway</span>
-                                <span id="wifi-gateway" class="text-slate-200 font-mono">—</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-400">DNS</span>
-                                <span id="wifi-dns" class="text-slate-200 font-mono text-xs">—</span>
-                            </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-slate-400">Type</span>
-                                <span id="wifi-type"
-                                    class="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400">DHCP</span>
+                                <select id="wifi-type-select"
+                                    class="bg-slate-600 text-white text-xs rounded px-2 py-1 border border-slate-500 focus:border-primary outline-none cursor-pointer"
+                                    onchange="toggleNetworkMode('wifi')">
+                                    <option value="dhcp">DHCP</option>
+                                    <option value="static">Static</option>
+                                </select>
                             </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">IP Address</span>
+                                <span id="wifi-ip" class="text-slate-200 font-mono wifi-dhcp-field">—</span>
+                                <input id="wifi-ip-input" type="text" placeholder="192.168.1.100"
+                                    class="hidden wifi-static-field bg-slate-600 text-white text-xs font-mono rounded px-2 py-1 border border-slate-500 focus:border-primary outline-none w-28 text-right">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Subnet</span>
+                                <span id="wifi-subnet" class="text-slate-200 font-mono wifi-dhcp-field">—</span>
+                                <input id="wifi-subnet-input" type="text" placeholder="255.255.255.0"
+                                    class="hidden wifi-static-field bg-slate-600 text-white text-xs font-mono rounded px-2 py-1 border border-slate-500 focus:border-primary outline-none w-28 text-right">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Gateway</span>
+                                <span id="wifi-gateway" class="text-slate-200 font-mono wifi-dhcp-field">—</span>
+                                <input id="wifi-gateway-input" type="text" placeholder="192.168.1.1"
+                                    class="hidden wifi-static-field bg-slate-600 text-white text-xs font-mono rounded px-2 py-1 border border-slate-500 focus:border-primary outline-none w-28 text-right">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">DNS</span>
+                                <span id="wifi-dns" class="text-slate-200 font-mono text-xs wifi-dhcp-field">—</span>
+                                <input id="wifi-dns-input" type="text" placeholder="8.8.8.8"
+                                    class="hidden wifi-static-field bg-slate-600 text-white text-xs font-mono rounded px-2 py-1 border border-slate-500 focus:border-primary outline-none w-28 text-right">
+                            </div>
+                            <button id="wifi-save-btn" onclick="saveStaticConfig('wifi')"
+                                class="hidden wifi-static-field w-full mt-2 px-3 py-1.5 bg-primary hover:bg-blue-600 rounded text-white text-xs font-medium transition-colors">
+                                Apply Static Config
+                            </button>
+                            <p id="wifi-save-status" class="text-xs text-center mt-1 hidden"></p>
                         </div>
                     </div>
                 </div>
@@ -903,6 +937,70 @@
             return isPrimary ? 'color: #10b981' : 'color: #3b82f6';  // green : blue
         }
 
+        // CIDR to subnet mask conversion (e.g. 24 → 255.255.255.0)
+        function cidrToSubnetMask(cidr) {
+            const bits = parseInt(cidr) || 24;
+            const mask = [];
+            for (let i = 0; i < 4; i++) {
+                const n = Math.min(bits - i * 8, 8);
+                mask.push(n > 0 ? 256 - Math.pow(2, 8 - n) : 0);
+            }
+            return mask.join('.');
+        }
+
+        // Toggle between DHCP (read-only) and Static (editable) fields
+        function toggleNetworkMode(prefix) {
+            const select = document.getElementById(`${prefix}-type-select`);
+            const isStatic = select.value === 'static';
+            document.querySelectorAll(`.${prefix}-dhcp-field`).forEach(el => {
+                el.classList.toggle('hidden', isStatic);
+            });
+            document.querySelectorAll(`.${prefix}-static-field`).forEach(el => {
+                el.classList.toggle('hidden', !isStatic);
+            });
+        }
+
+        // Save static IP config to server
+        async function saveStaticConfig(prefix) {
+            const iface = prefix === 'eth' ? 'ethernet' : 'wifi';
+            const ip = document.getElementById(`${prefix}-ip-input`).value.trim();
+            const subnet = document.getElementById(`${prefix}-subnet-input`).value.trim();
+            const gateway = document.getElementById(`${prefix}-gateway-input`).value.trim();
+            const dns = document.getElementById(`${prefix}-dns-input`).value.trim();
+            const statusEl = document.getElementById(`${prefix}-save-status`);
+
+            if (!ip || !subnet || !gateway) {
+                statusEl.textContent = 'IP, Subnet, and Gateway are required';
+                statusEl.className = 'text-xs text-center mt-1 text-amber-400';
+                statusEl.classList.remove('hidden');
+                return;
+            }
+
+            statusEl.textContent = 'Applying...';
+            statusEl.className = 'text-xs text-center mt-1 text-slate-300';
+            statusEl.classList.remove('hidden');
+
+            try {
+                const res = await fetch('/api/network/configure', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ interface: iface, ip, subnet, gateway, dns })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusEl.textContent = 'Applied successfully';
+                    statusEl.className = 'text-xs text-center mt-1 text-emerald-400';
+                    setTimeout(() => refreshNetworkStatus(), 3000);
+                } else {
+                    statusEl.textContent = data.error || 'Apply failed';
+                    statusEl.className = 'text-xs text-center mt-1 text-red-400';
+                }
+            } catch (e) {
+                statusEl.textContent = 'Network error';
+                statusEl.className = 'text-xs text-center mt-1 text-red-400';
+            }
+        }
+
         async function refreshNetworkStatus() {
             try {
                 const res = await fetch('/api/status');
@@ -923,15 +1021,26 @@
                 // Ethernet per-interface details
                 if (data.ethernet) {
                     const e = data.ethernet;
+                    const ethSelect = document.getElementById('eth-type-select');
+                    // Only update dropdown if user isn't actively editing static config
+                    if (document.activeElement !== ethSelect) {
+                        ethSelect.value = (e.type === 'Static') ? 'static' : 'dhcp';
+                        toggleNetworkMode('eth');
+                    }
+                    // Read-only (DHCP) fields
                     document.getElementById('eth-ip').textContent = e.ip || '—';
                     document.getElementById('eth-subnet').textContent = e.subnet ? '/' + e.subnet : '—';
                     document.getElementById('eth-gateway').textContent = e.gateway || '—';
                     document.getElementById('eth-dns').textContent = e.dns || '—';
-                    const ethType = document.getElementById('eth-type');
-                    ethType.textContent = e.type || 'DHCP';
-                    ethType.className = e.type === 'Static'
-                        ? 'px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-400'
-                        : 'px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400';
+                    // Pre-populate static inputs with current values as defaults
+                    const ethIpInput = document.getElementById('eth-ip-input');
+                    if (!ethIpInput.value) ethIpInput.value = e.ip || '';
+                    const ethSubInput = document.getElementById('eth-subnet-input');
+                    if (!ethSubInput.value) ethSubInput.value = e.subnet ? cidrToSubnetMask(e.subnet) : '255.255.255.0';
+                    const ethGwInput = document.getElementById('eth-gateway-input');
+                    if (!ethGwInput.value) ethGwInput.value = e.gateway || '';
+                    const ethDnsInput = document.getElementById('eth-dns-input');
+                    if (!ethDnsInput.value) ethDnsInput.value = e.dns || '8.8.8.8';
                 }
 
                 // WiFi status + indicator
@@ -944,15 +1053,23 @@
                 // WiFi per-interface details
                 if (data.wifi) {
                     const w = data.wifi;
+                    const wifiSelect = document.getElementById('wifi-type-select');
+                    if (document.activeElement !== wifiSelect) {
+                        wifiSelect.value = (w.type === 'Static') ? 'static' : 'dhcp';
+                        toggleNetworkMode('wifi');
+                    }
                     document.getElementById('wifi-ip').textContent = w.ip || '—';
                     document.getElementById('wifi-subnet').textContent = w.subnet ? '/' + w.subnet : '—';
                     document.getElementById('wifi-gateway').textContent = w.gateway || '—';
                     document.getElementById('wifi-dns').textContent = w.dns || '—';
-                    const wifiType = document.getElementById('wifi-type');
-                    wifiType.textContent = w.type || 'DHCP';
-                    wifiType.className = w.type === 'Static'
-                        ? 'px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-400'
-                        : 'px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/20 text-emerald-400';
+                    const wifiIpInput = document.getElementById('wifi-ip-input');
+                    if (!wifiIpInput.value) wifiIpInput.value = w.ip || '';
+                    const wifiSubInput = document.getElementById('wifi-subnet-input');
+                    if (!wifiSubInput.value) wifiSubInput.value = w.subnet ? cidrToSubnetMask(w.subnet) : '255.255.255.0';
+                    const wifiGwInput = document.getElementById('wifi-gateway-input');
+                    if (!wifiGwInput.value) wifiGwInput.value = w.gateway || '';
+                    const wifiDnsInput = document.getElementById('wifi-dns-input');
+                    if (!wifiDnsInput.value) wifiDnsInput.value = w.dns || '8.8.8.8';
                 }
             } catch (e) { console.error('Network status error:', e); }
         }
