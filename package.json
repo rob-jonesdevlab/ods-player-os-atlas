@@ -1,6 +1,6 @@
 {
     "name": "ods-player-os-atlas",
-    "version": "1.5.0",
+    "version": "9.3.0",
     "description": "ODS Player OS Atlas — Kiosk runtime for digital signage players",
     "main": "server.js",
     "dependencies": {

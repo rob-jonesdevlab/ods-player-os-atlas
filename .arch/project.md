@@ -1,8 +1,8 @@
-# ODS Player OS Atlas — Architecture
+# ODS Player Atlas — Architecture
 
 **Last Updated:** February 27, 2026  
-**Current Version:** v9-2-1-ORIGIN  
-**Status:** Production-ready P:0 → P:1 → P:2 pipeline — WiFi AP setup, QR pairing, signage-friendly UI, 3-state network indicators
+**Current Version:** v9-3-0-ORIGIN  
+**Status:** Production-ready P:0 → P:1 → P:2 pipeline — Captive portal auto-launch, ODS-branded setup, configurable DHCP/Static, WiFi AP + QR pairing, signage-friendly UI
 
 ---
 
@@ -12,11 +12,11 @@ ODS Player OS Atlas converts a Raspberry Pi 4b running Armbian into a locked-dow
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ ODS Cloud Dashboard (ods-signage)               │
+│ ODS Cloud Dashboard (ods-cloud-amigo)            │
 │ → Playlist management, content upload, pairing  │
 │ → https://www.ods-cloud.com                     │
 ├─────────────────────────────────────────────────┤
-│ ODS Player OS Atlas (this repo)                 │
+│ ODS Player Atlas (this repo)                    │
 │ → Express server (port 8080)                    │
 │ → Chromium --app mode (X11 fullscreen)          │
 │ → systemd services (12 production services)     │
@@ -105,6 +105,18 @@ See `.arch/image_processes.md` for detailed build commands and `.arch/build_guid
 - ✅ **Status pill** — `.90` vertical with glass-pill styling on all pages
 - ✅ Device name: `ods-setup-ap.sh` script (start/stop/status/ssid)
 
+### Completed — v9.3 Captive Portal & Network Config Sprint
+- ✅ **Captive portal auto-launch** — serves setup.html directly (`sendFile`) instead of meta-refresh/JS redirect (iOS CNA ignores both)
+- ✅ **ODS-branded setup.html** — dark glassmorphism theme, WiFi scan dropdown with signal strength bars, password toggle, 3-step progress, device name display
+- ✅ **Configurable DHCP/Static** — per-interface dropdown on Network Status cards (Ethernet + WiFi), editable IP/Subnet/Gateway/DNS in Static mode
+- ✅ **Subnet mask handling** — CIDR notation (`/24`) for DHCP, full mask (`255.255.255.0`) input for Static
+- ✅ **`/api/network/configure`** — server endpoint applies static IP via `ip` commands, converts subnet mask to CIDR, updates `/etc/resolv.conf`
+- ✅ **WiFi state AP-awareness** — `/api/wifi/state` returns `enabled: false` when hostapd running (prevents toggle flip during AP)
+- ✅ **Port 80 listener** — iOS captive portal detection requires port 80 reachable; `setcap` on node binary
+- ✅ **QR `H:true`** — hidden SSID parameter for iOS compatibility
+- ✅ **API documentation** — `.arch/api_doc.md` cataloging all 42 endpoints
+- ✅ **Repo rename** — `ods-player-os-atlas` → `ods-player-atlas`
+
 ### 7 Root Cause Fixes (v9-1-0 → v9-1-7)
 
 | # | Root Cause | Fix | Commit |
@@ -149,7 +161,8 @@ Complete lineage of every P:0 golden image ever built:
 | v9-1-6 | ORIGIN | 2/26/26 | Fix: Re-enable resize in inject (interim — replaced in v9-1-7) |
 | **v9-1-7** | **ORIGIN** | **2/26/26** | **Fix: `finalize_phase1()` re-enables resize service — proper fix. Clean P:0** |
 | v9-2-0 | ORIGIN | 2/27/26 | WiFi AP setup, QR network config, captive portal, signage-friendly UI |
-| **v9-2-1** | **ORIGIN** | **2/27/26** | **AP stability, dynamic card width, 3-state network indicators, ethernet auto-redirect** |
+| v9-2-1 | ORIGIN | 2/27/26 | AP stability, dynamic card width, 3-state network indicators, ethernet auto-redirect |
+| **v9-3-0** | **ORIGIN** | **2/27/26** | **Captive portal auto-launch, ODS-branded setup.html, configurable DHCP/Static, API docs, repo rename** |
 
 ### Commit History (v8-v9)
 
@@ -173,23 +186,29 @@ Complete lineage of every P:0 golden image ever built:
 | v9-1-6 | `bd7c668` | Re-enable resize in inject (interim bandaid) |
 | **v9-1-7** | **`054a3d0`** | **`finalize_phase1()` re-enables resize service — proper fix** |
 | v9-2-0 | `d11e8ad` | Network status 3-state indicators + default network toggle + signage fonts |
-| **v9-2-1** | **`b0eceb7`** | **AP stability, WiFi scan guard, dynamic card width, whitespace-nowrap** |
+| v9-2-1 | `b0eceb7` | AP stability, WiFi scan guard, dynamic card width, whitespace-nowrap |
+| v9-2-1+ | `c1e4bce` | Hidden SSID fix (country_code/ieee80211n root cause) |
+| v9-2-1+ | `8f49c7d` | AP stability — kill wpa, guard WiFi scan, US reg |
+| v9-2-1+ | `f9bbc03` | Port 80 + H:true in QR (iOS captive portal + hidden SSID) |
+| v9-2-1+ | `9eb4525` | WiFi state returns disabled during AP mode (hostapd check) |
+| v9-2-1+ | `975d7c3` | Configurable DHCP/Static per network card + /api/network/configure |
+| v9-2-1+ | `dcf1b72` | API docs — .arch/api_doc.md (42 endpoints) |
+| **v9-3-0** | **`4fdd2d2`** | **Captive portal sendFile fix + ODS dark theme setup.html with WiFi scan** |
 
 ### Pending / Next Version
-- [x] P:0 golden image rebuild → **v9-2-1-ORIGIN**
-- [x] Validate Esper enrollment end-to-end on fresh P:0 flash
-- [x] Validate Chromium installation with NTP clock sync
-- [x] Validate clone auto-expand on first boot
-- [x] WiFi AP phone-based network setup
-- [x] QR code → ODS Cloud pairing deep link
-- [x] Signage-friendly fonts (all pages)
-- [x] Dynamic card width (no text wrapping)
-- [x] 3-state network indicators + default network toggle
-- [x] Ethernet auto-redirect to player_link
+- [x] P:0 golden image rebuild → **v9-3-0-ORIGIN**
+- [x] Captive portal auto-launch (sendFile instead of redirect)
+- [x] ODS-branded setup.html with WiFi scan dropdown
+- [x] Configurable DHCP/Static per network card
+- [x] API documentation (.arch/api_doc.md)
+- [x] Repo rename: ods-player-os-atlas → ods-player-atlas
+- [x] WiFi state AP-awareness
+- [x] Port 80 listener + QR H:true
 - [ ] ODS Cloud — Content delivery pipeline (cloud-sync, cache-manager)
 - [ ] OTA updates from ODS Cloud dashboard
 - [ ] Remote background/content push
 - [ ] Offline mode via local cache management
+- [ ] ODS Cloud > Players > Player Settings (remote network config)
 - [ ] Wayland/Cage migration for zero-flash boot
 
 ## Script Architecture
