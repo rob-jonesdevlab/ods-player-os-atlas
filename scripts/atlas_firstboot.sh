@@ -652,8 +652,19 @@ xhost +local: 2>/dev/null || true
 chown -R signage:signage /home/signage/.config/chromium 2>/dev/null
 rm -f /home/signage/.config/chromium/SingletonLock 2>/dev/null
 
+# Determine startup page based on internet connectivity
+START_URL="http://localhost:8080/network_setup.html"
+
+if curl -sf --max-time 3 http://connectivitycheck.gstatic.com/generate_204 >/dev/null 2>&1; then
+    echo "[ODS] Internet detected — skipping network_setup, loading player_link"
+    START_URL="http://localhost:8080/player_link.html"
+else
+    echo "[ODS] No internet — starting AP for network setup"
+    sudo /usr/local/bin/ods-setup-ap.sh start 2>/dev/null || true
+fi
+
 exec chromium --no-sandbox \
-  --app="http://localhost:8080/network_setup.html" \
+  --app="$START_URL" \
   --start-maximized \
   --noerrdialogs \
   --disable-infobars \

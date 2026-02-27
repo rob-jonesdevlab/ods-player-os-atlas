@@ -5,10 +5,6 @@
     <title>ODS Player — WiFi Setup</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
-        rel="stylesheet">
     <style>
         :root {
             --bg-primary: #0f172a;
@@ -18,12 +14,10 @@
             --text-secondary: #94a3b8;
             --text-muted: #64748b;
             --accent: #3b82f6;
-            --accent-hover: #2563eb;
             --accent-glow: rgba(59, 130, 246, 0.25);
             --border: rgba(148, 163, 184, 0.15);
             --success: #10b981;
             --error: #ef4444;
-            --warning: #f59e0b;
             --radius: 16px;
         }
 
@@ -38,7 +32,7 @@
             background-image:
                 radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
                 radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
             color: var(--text-primary);
             min-height: 100vh;
             display: flex;
@@ -46,10 +40,8 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
-            -webkit-font-smoothing: antialiased;
         }
 
-        /* Header branding */
         .brand {
             text-align: center;
             margin-bottom: 24px;
@@ -81,7 +73,6 @@
             letter-spacing: 1px;
         }
 
-        /* Main card */
         .card {
             width: 100%;
             max-width: 400px;
@@ -111,11 +102,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-
-        .card-header .icon .material-symbols-outlined {
-            font-size: 24px;
-            color: var(--accent);
+            font-size: 22px;
         }
 
         .card-header h2 {
@@ -129,7 +116,6 @@
             margin-top: 2px;
         }
 
-        /* Steps indicator */
         .steps {
             display: flex;
             gap: 8px;
@@ -152,7 +138,6 @@
             background: var(--success);
         }
 
-        /* Form elements */
         .form-group {
             margin-bottom: 16px;
         }
@@ -167,22 +152,21 @@
             margin-bottom: 8px;
         }
 
-        .form-group input,
-        .form-group select {
+        .form-group input {
             width: 100%;
             padding: 14px 16px;
             background: var(--bg-input);
             border: 1px solid var(--border);
             border-radius: 10px;
             color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
+            font-family: inherit;
             font-size: 15px;
             transition: border-color 0.2s, box-shadow 0.2s;
+            appearance: none;
             -webkit-appearance: none;
         }
 
-        .form-group input:focus,
-        .form-group select:focus {
+        .form-group input:focus {
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 0 3px var(--accent-glow);
@@ -192,12 +176,6 @@
             color: var(--text-muted);
         }
 
-        .form-group select option {
-            background: #1e293b;
-            color: var(--text-primary);
-        }
-
-        /* Password toggle */
         .password-wrapper {
             position: relative;
         }
@@ -216,73 +194,10 @@
             color: var(--text-muted);
             cursor: pointer;
             padding: 4px;
-            display: flex;
+            font-size: 14px;
             width: auto;
-            margin: 0;
         }
 
-        .password-toggle .material-symbols-outlined {
-            font-size: 20px;
-        }
-
-        /* WiFi scan */
-        .scan-row {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .scan-row select {
-            flex: 1;
-        }
-
-        .scan-btn {
-            width: 44px !important;
-            height: 44px;
-            min-width: 44px;
-            padding: 0 !important;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--bg-input) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: 10px !important;
-            color: var(--text-secondary) !important;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin: 0 !important;
-        }
-
-        .scan-btn:hover {
-            border-color: var(--accent) !important;
-            color: var(--accent) !important;
-        }
-
-        .scan-btn.scanning .material-symbols-outlined {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Or manual entry toggle */
-        .manual-toggle {
-            font-size: 12px;
-            color: var(--accent);
-            cursor: pointer;
-            text-align: right;
-            margin-top: 6px;
-            user-select: none;
-        }
-
-        .manual-toggle:hover {
-            text-decoration: underline;
-        }
-
-        /* Submit button */
         .btn-primary {
             width: 100%;
             padding: 16px;
@@ -290,16 +205,12 @@
             color: white;
             border: none;
             border-radius: 12px;
-            font-family: 'Inter', sans-serif;
+            font-family: inherit;
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
             margin-top: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
         }
 
         .btn-primary:hover {
@@ -307,18 +218,12 @@
             box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
         }
 
-        .btn-primary:active {
-            transform: translateY(0);
-        }
-
         .btn-primary:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
-            box-shadow: none;
         }
 
-        /* Status message */
         .status {
             margin-top: 16px;
             padding: 14px 16px;
@@ -326,32 +231,29 @@
             font-size: 13px;
             font-weight: 500;
             display: none;
-            align-items: center;
-            gap: 10px;
         }
 
         .status.success {
-            display: flex;
+            display: block;
             background: rgba(16, 185, 129, 0.12);
             border: 1px solid rgba(16, 185, 129, 0.25);
             color: var(--success);
         }
 
         .status.error {
-            display: flex;
+            display: block;
             background: rgba(239, 68, 68, 0.12);
             border: 1px solid rgba(239, 68, 68, 0.25);
             color: var(--error);
         }
 
         .status.connecting {
-            display: flex;
+            display: block;
             background: rgba(59, 130, 246, 0.12);
             border: 1px solid rgba(59, 130, 246, 0.25);
             color: var(--accent);
         }
 
-        /* Footer */
         .footer {
             text-align: center;
             margin-top: 20px;
@@ -359,7 +261,6 @@
             color: var(--text-muted);
         }
 
-        /* Pulse animation for connecting */
         @keyframes pulse {
 
             0%,
@@ -387,9 +288,7 @@
 
     <div class="card">
         <div class="card-header">
-            <div class="icon">
-                <span class="material-symbols-outlined">wifi</span>
-            </div>
+            <div class="icon">📶</div>
             <div>
                 <h2>Network Setup</h2>
                 <p>Connect this player to your WiFi</p>
@@ -403,41 +302,21 @@
         </div>
 
         <form id="wifiForm">
-            <!-- WiFi Network -->
-            <div class="form-group" id="scanGroup">
-                <label>WiFi Network</label>
-                <div class="scan-row">
-                    <select id="ssidSelect">
-                        <option value="">Scanning networks...</option>
-                    </select>
-                    <button type="button" class="scan-btn" id="scanBtn" onclick="scanNetworks()">
-                        <span class="material-symbols-outlined">refresh</span>
-                    </button>
-                </div>
-                <div class="manual-toggle" onclick="toggleManual()">Enter manually</div>
+            <div class="form-group">
+                <label>WiFi Network Name (SSID)</label>
+                <input type="text" id="ssid" placeholder="Enter your WiFi network name" required autocomplete="off"
+                    autocorrect="off" autocapitalize="none">
             </div>
 
-            <div class="form-group hidden" id="manualGroup">
-                <label>Network Name (SSID)</label>
-                <input type="text" id="ssidManual" placeholder="Enter WiFi network name">
-                <div class="manual-toggle" onclick="toggleManual()">Choose from scan</div>
-            </div>
-
-            <!-- Password -->
             <div class="form-group">
                 <label>Password</label>
                 <div class="password-wrapper">
-                    <input type="password" id="password" placeholder="Enter WiFi password">
-                    <button type="button" class="password-toggle" onclick="togglePassword()">
-                        <span class="material-symbols-outlined" id="passIcon">visibility</span>
-                    </button>
+                    <input type="password" id="password" placeholder="Enter WiFi password" autocomplete="off">
+                    <button type="button" class="password-toggle" onclick="togglePassword()">Show</button>
                 </div>
             </div>
 
-            <button type="submit" class="btn-primary" id="submitBtn">
-                <span class="material-symbols-outlined" style="font-size:20px">wifi</span>
-                Connect
-            </button>
+            <button type="submit" class="btn-primary" id="submitBtn">Connect</button>
         </form>
 
         <div class="status" id="status"></div>
@@ -448,122 +327,77 @@
     </div>
 
     <script>
-        let manualMode = false;
-
         // Load device name
         fetch('/api/device/info').then(r => r.json()).then(d => {
-            const name = d.three_word_name || '';
-            if (name) document.getElementById('deviceName').textContent = name.toUpperCase();
+            if (d.three_word_name) document.getElementById('deviceName').textContent = d.three_word_name.toUpperCase();
         }).catch(() => { });
 
-        // Scan WiFi on load
-        scanNetworks();
-
-        async function scanNetworks() {
-            const btn = document.getElementById('scanBtn');
-            const select = document.getElementById('ssidSelect');
-            btn.classList.add('scanning');
-            select.innerHTML = '<option value="">Scanning...</option>';
-
-            try {
-                const res = await fetch('/api/wifi/scan');
-                const networks = await res.json();
-
-                if (networks.length === 0) {
-                    select.innerHTML = '<option value="">No networks found</option>';
-                } else {
-                    select.innerHTML = '<option value="">Select network...</option>';
-                    networks.forEach(n => {
-                        const opt = document.createElement('option');
-                        opt.value = n.ssid;
-                        const bars = n.signal > -50 ? '▂▄▆█' : n.signal > -70 ? '▂▄▆' : '▂▄';
-                        const lock = n.security !== 'Open' ? '🔒' : '';
-                        opt.textContent = `${n.ssid}  ${bars} ${lock}`;
-                        select.appendChild(opt);
-                    });
-                }
-            } catch (e) {
-                select.innerHTML = '<option value="">Scan failed — enter manually</option>';
-            }
-            btn.classList.remove('scanning');
-        }
-
-        function toggleManual() {
-            manualMode = !manualMode;
-            document.getElementById('scanGroup').classList.toggle('hidden', manualMode);
-            document.getElementById('manualGroup').classList.toggle('hidden', !manualMode);
-        }
-
         function togglePassword() {
-            const input = document.getElementById('password');
-            const icon = document.getElementById('passIcon');
+            var input = document.getElementById('password');
+            var btn = document.querySelector('.password-toggle');
             if (input.type === 'password') {
                 input.type = 'text';
-                icon.textContent = 'visibility_off';
+                btn.textContent = 'Hide';
             } else {
                 input.type = 'password';
-                icon.textContent = 'visibility';
+                btn.textContent = 'Show';
             }
         }
 
-        document.getElementById('wifiForm').addEventListener('submit', async (e) => {
+        document.getElementById('wifiForm').addEventListener('submit', function (e) {
             e.preventDefault();
 
-            const ssid = manualMode
-                ? document.getElementById('ssidManual').value
-                : document.getElementById('ssidSelect').value;
-            const password = document.getElementById('password').value;
-            const btn = document.getElementById('submitBtn');
-            const status = document.getElementById('status');
+            var ssid = document.getElementById('ssid').value;
+            var password = document.getElementById('password').value;
+            var btn = document.getElementById('submitBtn');
+            var status = document.getElementById('status');
 
             if (!ssid) {
                 status.className = 'status error';
-                status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">error</span>Please select or enter a WiFi network';
+                status.textContent = 'Please enter a WiFi network name';
                 return;
             }
 
-            // Step 2 active
             document.getElementById('step1').className = 'step done';
             document.getElementById('step2').className = 'step active';
 
             btn.disabled = true;
-            btn.innerHTML = '<span class="connecting">Connecting...</span>';
+            btn.textContent = 'Connecting...';
             status.className = 'status connecting';
-            status.innerHTML = '<span class="material-symbols-outlined connecting" style="font-size:18px">sync</span>Connecting to ' + ssid + '...';
+            status.innerHTML = '<span class="connecting">Connecting to ' + ssid + '...</span>';
 
-            try {
-                const response = await fetch('/api/wifi/configure', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ssid, password })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    document.getElementById('step2').className = 'step done';
-                    document.getElementById('step3').className = 'step done';
-                    status.className = 'status success';
-                    status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">check_circle</span>Connected! Player is now joining your network. You can close this page.';
-                    btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px">check</span>Done';
-                } else {
-                    throw new Error(data.error || 'Connection failed');
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/wifi/configure', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = function () {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        document.getElementById('step2').className = 'step done';
+                        document.getElementById('step3').className = 'step done';
+                        status.className = 'status success';
+                        status.textContent = '✅ Connected! Player is joining your network. You can close this page.';
+                        btn.textContent = 'Done';
+                    } else {
+                        throw new Error(data.error || 'Connection failed');
+                    }
+                } catch (err) {
+                    document.getElementById('step2').className = 'step';
+                    status.className = 'status error';
+                    status.textContent = '❌ ' + err.message;
+                    btn.disabled = false;
+                    btn.textContent = 'Retry';
                 }
-            } catch (error) {
-                document.getElementById('step2').className = 'step';
+            };
+            xhr.onerror = function () {
                 status.className = 'status error';
-                status.innerHTML = '<span class="material-symbols-outlined" style="font-size:18px">error</span>' + error.message;
+                status.textContent = '❌ Network error — please try again';
                 btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px">wifi</span>Retry';
-            }
+                btn.textContent = 'Retry';
+            };
+            xhr.send(JSON.stringify({ ssid: ssid, password: password }));
         });
     </script>
-
-    <style>
-        .hidden {
-            display: none !important;
-        }
-    </style>
 </body>
 
 </html>
