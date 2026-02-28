@@ -1,8 +1,8 @@
 # ODS Player Atlas — Architecture
 
-**Last Updated:** February 27, 2026  
-**Current Version:** v9-3-0-ORIGIN  
-**Status:** Production-ready P:0 → P:1 → P:2 pipeline — Captive portal auto-launch, ODS-branded setup, configurable DHCP/Static, WiFi AP + QR pairing, signage-friendly UI
+**Last Updated:** February 28, 2026  
+**Current Version:** v9-3-1-ORIGIN  
+**Status:** Production-ready P:0 → P:1 → P:2 pipeline — WiFi AP connection flow verified end-to-end, compact card layout, ODS-branded captive portal, configurable DHCP/Static, signage-friendly UI
 
 ---
 
@@ -117,6 +117,21 @@ See `.arch/image_processes.md` for detailed build commands and `.arch/build_guid
 - ✅ **API documentation** — `.arch/api_doc.md` cataloging all 42 endpoints
 - ✅ **Repo rename** — `ods-player-os-atlas` → `ods-player-atlas`
 
+### Completed — v9.3.1 WiFi Connection Fix & Layout Refinements
+- ✅ **WiFi connection flow** — end-to-end captive portal → WiFi client mode verified working
+- ✅ **Root cause: `dhclient` missing** — device has no `dhclient`; fixed to use `busybox udhcpc`
+- ✅ **Root cause: `wpa_supplicant` sudoers** — `signage` user lacked sudo for `wpa_supplicant`, `killall`, `busybox`; added to `/etc/sudoers.d/signage`
+- ✅ **Root cause: `ip addr flush` sudoers** — `signage` user lacked sudo for `ip addr`; added to sudoers
+- ✅ **Root cause: systemd Conflicts** — `ods-setup-ap.service` has `Conflicts=wpa_supplicant.service`; bypassed `systemctl stop` entirely, using direct `killall` for AP teardown
+- ✅ **Root cause: wpa_supplicant D-Bus mode** — `wpa_supplicant.service` runs `-u -s` (D-Bus, no `-i wlan0`); fixed to run `wpa_supplicant -B -i wlan0 -c conf` directly
+- ✅ **Compact card layout** — `width: fit-content` + `flex: 0 0 auto` on both columns, card shrinks to content
+- ✅ **Card divider removed** — `border-right` between text and QR columns removed
+- ✅ **Padding balanced** — 5rem left padding on text column, 5rem right padding on QR column
+- ✅ **Step numbers centered** — `align-items: center` for vertical centering between title/description
+- ✅ **Removed step 1 description** — "On your computer or mobile device" removed for brevity
+- ✅ **HOSTNAME label** — network_setup changed "Device Name" → "HOSTNAME", strips "ODS-" prefix from displayed value
+- ✅ **API documentation** — `.arch/api_doc.md` updated with all 42 endpoints including WiFi connection flow diagram
+
 ### 7 Root Cause Fixes (v9-1-0 → v9-1-7)
 
 | # | Root Cause | Fix | Commit |
@@ -162,7 +177,8 @@ Complete lineage of every P:0 golden image ever built:
 | **v9-1-7** | **ORIGIN** | **2/26/26** | **Fix: `finalize_phase1()` re-enables resize service — proper fix. Clean P:0** |
 | v9-2-0 | ORIGIN | 2/27/26 | WiFi AP setup, QR network config, captive portal, signage-friendly UI |
 | v9-2-1 | ORIGIN | 2/27/26 | AP stability, dynamic card width, 3-state network indicators, ethernet auto-redirect |
-| **v9-3-0** | **ORIGIN** | **2/27/26** | **Captive portal auto-launch, ODS-branded setup.html, configurable DHCP/Static, API docs, repo rename** |
+| v9-3-0 | ORIGIN | 2/27/26 | Captive portal auto-launch, ODS-branded setup.html, configurable DHCP/Static, API docs, repo rename |
+| **v9-3-1** | **ORIGIN** | **2/28/26** | **WiFi connection fix (wpa_supplicant/udhcpc), compact card layout, HOSTNAME label, step centered** |
 
 ### Commit History (v8-v9)
 
@@ -193,17 +209,17 @@ Complete lineage of every P:0 golden image ever built:
 | v9-2-1+ | `9eb4525` | WiFi state returns disabled during AP mode (hostapd check) |
 | v9-2-1+ | `975d7c3` | Configurable DHCP/Static per network card + /api/network/configure |
 | v9-2-1+ | `dcf1b72` | API docs — .arch/api_doc.md (42 endpoints) |
-| **v9-3-0** | **`4fdd2d2`** | **Captive portal sendFile fix + ODS dark theme setup.html with WiFi scan** |
+| v9-3-0 | `4fdd2d2` | Captive portal sendFile fix + ODS dark theme setup.html with WiFi scan |
+| v9-3-1 | `47b73a6` | WiFi connection: bypass systemd, use direct killall + busybox udhcpc |
+| v9-3-1 | `e61937c` | Card layout: fit-content width, divider removed, padding balanced |
+| v9-3-1 | `c345f89` | Remove step 1 desc, center step numbers, HOSTNAME label |
 
 ### Pending / Next Version
 - [x] P:0 golden image rebuild → **v9-3-0-ORIGIN**
-- [x] Captive portal auto-launch (sendFile instead of redirect)
-- [x] ODS-branded setup.html with WiFi scan dropdown
-- [x] Configurable DHCP/Static per network card
-- [x] API documentation (.arch/api_doc.md)
-- [x] Repo rename: ods-player-os-atlas → ods-player-atlas
-- [x] WiFi state AP-awareness
-- [x] Port 80 listener + QR H:true
+- [x] WiFi connection flow verified end-to-end
+- [x] Compact card layout (fit-content + centered steps)
+- [x] HOSTNAME label (replaced Device Name)
+- [x] API documentation (.arch/api_doc.md — 42 endpoints)
 - [ ] ODS Cloud — Content delivery pipeline (cloud-sync, cache-manager)
 - [ ] OTA updates from ODS Cloud dashboard
 - [ ] Remote background/content push
@@ -259,6 +275,13 @@ Device credentials are in `scripts/atlas_secrets.conf` (root: `0D5@dm!n`). Build
 
 ### WiFi AP Setup (Phone Config)
 hostapd runs in AP mode on wlan0 with `country_code=US`, `ieee80211n=1`, channel 6, hidden SSID. AP start kills `wpa_supplicant` first (it fights hostapd for wlan0). WiFi scan endpoint guarded with `pgrep -x hostapd` to prevent disrupting AP mode. dnsmasq uses `except-interface=end0` (Pi5 Armbian ethernet name).
+
+### WiFi Client Connection (After Captive Portal)
+After user submits WiFi creds via captive portal, server.js tears down AP and connects to WiFi:
+- **Cannot use `systemctl stop ods-setup-ap`** — its stop handler starts `wpa_supplicant` in D-Bus mode (`-u -s`, no `-i wlan0`) and the `Conflicts=wpa_supplicant.service` kills any manually-started instance
+- **Cannot use `dhclient`** — not installed on Armbian Trixie. Use `busybox udhcpc -i wlan0 -n -q`
+- **Sudoers required:** `wpa_supplicant`, `killall`, `busybox`, `ip addr *` for the `signage` user
+- **Sequence:** `killall hostapd/dnsmasq/wpa_supplicant` → `ip addr flush wlan0` → `ip link set wlan0 up` → `wpa_supplicant -B -i wlan0 -c conf` → 10s wait → `wpa_cli reconfigure` → `busybox udhcpc` → verify via `wpa_cli status`
 
 ## Environment
 

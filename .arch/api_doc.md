@@ -1,46 +1,95 @@
-# ODS Player OS Atlas — API Documentation
+# ODS Player Atlas — API Documentation
 
-> **Server:** Express.js on port 8080 (+ port 80 for captive portal)  
-> **Base URL:** `http://<device-ip>:8080`  
-> **Auth:** Most endpoints are unauthenticated (local device). Admin endpoints require `x-admin-token` header.
-
----
-
-## Captive Portal (iOS/Android WiFi Setup)
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/hotspot-detect.html` | iOS captive portal detection — returns setup.html redirect |
-| GET | `/generate_204` | Android captive portal detection |
-| GET | `/gen_204` | Android (alt) captive portal detection |
-| GET | `/connecttest.txt` | Windows captive portal detection |
-| GET | `/ncsi.txt` | Windows NCSI probe |
-| GET | `/redirect` | Generic redirect → setup.html |
+> **Server:** Express.js on Raspberry Pi 4b (Armbian)  
+> **Base URL:** `http://localhost:8080` (device-local)  
+> **Port 80:** Captive portal listener (iOS/Android detection)  
+> **Auth:** Admin endpoints require `x-admin-token` header (30-min session)  
+> **Runtime:** Node.js v20.19.2
 
 ---
 
-## Network Status & Configuration
+## Captive Portal Detection
+
+Auto-redirects phone browsers to `setup.html` when connected to the device's WiFi AP.
+
+| Method | Endpoint | Platform | Behavior |
+|--------|----------|----------|----------|
+| GET | `/hotspot-detect.html` | iOS | Serves `setup.html` directly (200) |
+| GET | `/generate_204` | Android | Serves `setup.html` (200 instead of 204) |
+| GET | `/gen_204` | Android alt | Same as above |
+| GET | `/connecttest.txt` | Windows | Serves `setup.html` |
+| GET | `/ncsi.txt` | Windows alt | Same as above |
+| GET | `/redirect` | Fallback | 302 redirect to `/setup.html` |
+
+---
+
+## Network
 
 | Method | Endpoint | Purpose | Response |
 |--------|----------|---------|----------|
-| GET | `/api/status` | Full network status | `{ wifi_connected, ethernet_connected, ssid, hasInternet, ethernet: { ip, subnet, gateway, dns, type }, wifi: { ip, subnet, gateway, dns, type } }` |
-| GET | `/api/wifi/scan` | Scan available WiFi networks | `[{ ssid, signal, security }]` |
-| GET | `/api/wifi/state` | WiFi client state (AP-aware) | `{ enabled, ap_mode }` |
-| POST | `/api/wifi/toggle` | Enable/disable WiFi | Body: `{ enabled }` |
-| POST | `/api/wifi/configure` | Connect to WiFi network | Body: `{ ssid, password }` |
-| POST | `/api/network/configure` | Apply static IP or switch to DHCP | Body: `{ interface: "ethernet"|"wifi", mode?, ip, subnet, gateway, dns }` |
-| GET | `/api/display/modes` | Available display resolutions | `[{ mode, current }]` |
+| GET | `/api/status` | Network status (WiFi + Ethernet) | `{ wifi_connected, ethernet_connected, hasInternet, ssid, ethernet: {...}, wifi: {...}, ip_address, dns }` |
+| POST | `/api/network/configure` | Set static IP or switch to DHCP | Body: `{ interface: "ethernet"|"wifi", mode: "static"|"dhcp", ip, subnet, gateway, dns }` |
 
 ---
 
-## QR Code & Enrollment
+## WiFi
 
 | Method | Endpoint | Purpose | Response |
 |--------|----------|---------|----------|
-| GET | `/api/qr` | Generate WiFi QR code for AP join | `{ qrCode (dataURL), ssid, setupUrl }` |
-| POST | `/api/enroll` | Register device with ODS Cloud | Body: none. Response: `{ success, device_uuid, pairing_code, expires_at, qr_data }` |
+| GET | `/api/wifi/scan` | Scan available WiFi networks | `{ networks: [{ ssid, signal }] }` — Returns `{ ap_active: true }` if hostapd running |
+| POST | `/api/wifi/configure` | Save WiFi credentials + connect | Body: `{ ssid, password }` → `{ success, message }`. Async: stops AP, starts wpa_supplicant, runs udhcpc |
+| POST | `/api/wifi/toggle` | Enable/disable WiFi interface | Body: `{ enabled }` → `{ success, enabled }` |
+| GET | `/api/wifi/state` | WiFi client state | `{ enabled, ap_mode }` — Returns `enabled: false` when hostapd running |
 
-**QR Format:** `WIFI:T:nopass;S:<SSID>;H:true;;` (hidden open network)
+---
+
+## Display
+
+| Method | Endpoint | Purpose | Response |
+|--------|----------|---------|----------|
+| GET | `/api/display/modes` | Available display resolutions | `{ modes: ["3840x2160", "1920x1080", ...] }` |
+
+---
+
+## QR / Enrollment
+
+| Method | Endpoint | Purpose | Response |
+|--------|----------|---------|----------|
+| GET | `/api/qr` | Generate WiFi QR code for AP | `{ qrCode (dataURL), ssid, setupUrl }` |
+| POST | `/api/enroll` | Register device with ODS Cloud | Body: `{ }` (reads CPU serial internally) → `{ success, device_uuid, pairing_code, expires_at, qr_data }` |
+
+---
+
+## System
+
+| Method | Endpoint | Purpose | Notes |
+|--------|----------|---------|-------|
+| GET | `/api/system/info` | Full system diagnostics | `{ hostname, cpu_temp, uptime, ram_usage, ram_percent, storage_usage, storage_percent, os_version, ip_address, dns, display_resolution, ... }` |
+| POST | `/api/system/reboot` | Reboot device | 2s delay before reboot |
+| POST | `/api/system/shutdown` | Shutdown device | 2s delay before shutdown |
+| POST | `/api/system/unpair` | Unpair from ODS Cloud + reboot | Calls cloud API to unpair, clears enrollment flag |
+| POST | `/api/system/resolution` | Change display resolution | Body: `{ resolution: "1920x1080" }` — via xrandr |
+| POST | `/api/system/cache-clear` | Clear Chromium browser cache | Deletes Cache + Code Cache dirs |
+| POST | `/api/system/factory-reset` | Factory reset + reboot | Unpairs from cloud, clears all local state |
+| POST | `/api/system/timezone` | Set system timezone | Body: `{ timezone: "America/New_York" }` |
+| GET | `/api/system/volume` | Get current audio volume | `{ volume: 75 }` |
+| POST | `/api/system/volume` | Set audio volume | Body: `{ volume: 0-100 }` |
+| GET | `/api/system/logs` | View system logs by type | Query: `?type=boot|health|services|system|esper` |
+
+---
+
+## Admin (Session-authenticated)
+
+Login creates a 30-minute session token. All admin endpoints require `x-admin-token` header.
+
+| Method | Endpoint | Auth | Purpose |
+|--------|----------|------|---------|
+| POST | `/api/admin/login` | None | Authenticate `otter` user → `{ success, token }` |
+| POST | `/api/admin/terminal` | Token | Launch xterm overlay on device display |
+| POST | `/api/admin/restart-services` | Token | Restart all ODS systemd services |
+| POST | `/api/admin/password` | Token | Change `otter` user password |
+| POST | `/api/admin/ssh` | Token | Enable/disable SSH service |
+| GET | `/api/admin/services` | Token | View ODS service statuses |
 
 ---
 
@@ -48,95 +97,67 @@
 
 | Method | Endpoint | Purpose | Response |
 |--------|----------|---------|----------|
-| GET | `/api/device/info` | Device identity & pairing status | `{ three_word_name, mac_address, connection_type, ssid, ip_address, account_name, device_name }` |
-
----
-
-## System Management
-
-| Method | Endpoint | Purpose | Body |
-|--------|----------|---------|------|
-| GET | `/api/system/info` | System hardware/software info | Response: `{ hostname, device_name, cpu_temp, uptime, ram_usage, ram_percent, storage_usage, storage_percent, disk_total, os_version, ip_address, dns, interfaces, display_resolution, display_scale }` |
-| POST | `/api/system/reboot` | Reboot device | — |
-| POST | `/api/system/shutdown` | Shutdown device | — |
-| POST | `/api/system/unpair` | Unpair from ODS Cloud + reboot | — |
-| POST | `/api/system/factory-reset` | Factory reset → enrollment flow | — |
-| POST | `/api/system/resolution` | Set display resolution | `{ resolution: "1920x1080" }` |
-| POST | `/api/system/cache-clear` | Clear Chromium cache | — |
-| POST | `/api/system/timezone` | Set system timezone | `{ timezone: "America/Los_Angeles" }` |
-| GET | `/api/system/volume` | Get audio volume | `{ volume: 75 }` |
-| POST | `/api/system/volume` | Set audio volume | `{ volume: 0-100 }` |
-| GET | `/api/system/logs` | View system logs by type | Query: `?type=boot|health|services|system|esper` |
-
----
-
-## Loader / Plymouth
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/api/loader-ready` | Signal that loader page is ready (Plymouth can quit) |
-| POST | `/api/signal-ready` | Page ready signal (alternative) |
-
----
-
-## Admin (Requires `x-admin-token` header)
-
-| Method | Endpoint | Purpose | Body |
-|--------|----------|---------|------|
-| POST | `/api/admin/login` | Authenticate as otter user | `{ username: "otter", password }` → `{ success, token }` |
-| POST | `/api/admin/terminal` | Launch xterm overlay on display | — |
-| POST | `/api/admin/restart-services` | Restart all ODS systemd services | — |
-| POST | `/api/admin/password` | Update otter password | `{ newPassword }` (min 8 chars) |
-| POST | `/api/admin/ssh` | Toggle SSH on/off | `{ enabled }` |
-| GET | `/api/admin/services` | View systemd service statuses | — |
+| GET | `/api/device/info` | Device identity + pairing data | `{ three_word_name, mac_address, connection_type, ssid, ip_address, account_name, device_name }` |
 
 ---
 
 ## Content Cache
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/api/cache/sync` | Manual content sync trigger |
-| GET | `/api/cache/status` | Cache health & manifest | `{ canOperate, assetCount, configCached, configHash, assets[] }` |
-| GET | `/api/cache/content/:contentId` | Serve cached content file |
-| POST | `/api/cache/clean` | Clean stale cache entries | `{ maxAgeDays: 7 }` |
+| Method | Endpoint | Purpose | Response |
+|--------|----------|---------|----------|
+| POST | `/api/cache/sync` | Trigger content sync from ODS Cloud | `{ synced, assetCount, ... }` |
+| GET | `/api/cache/status` | Cache health + manifest | `{ canOperate, assetCount, configCached, assets: [...] }` |
+| GET | `/api/cache/content/:contentId` | Serve cached content file | Binary file stream |
+| POST | `/api/cache/clean` | Remove stale cached files | Body: `{ maxAgeDays: 7 }` |
 
 ---
 
-## Player Content Delivery
+## Content Delivery (Player Renderer)
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
+| Method | Endpoint | Purpose | Response |
+|--------|----------|---------|----------|
 | GET | `/api/player/content` | Current playlist for renderer | `{ hasContent, playlist }` |
-| GET | `/api/player/sync-status` | Cloud sync health status |
-| POST | `/api/player/sync-now` | Manual cloud sync trigger |
-
-**Static:** `/cache/*` — Serves cached content files directly
+| GET | `/api/player/sync-status` | Sync health for system config | `{ syncing, lastSync, errors, ... }` |
+| POST | `/api/player/sync-now` | Manual sync trigger | `{ success, status }` |
 
 ---
 
-## Static Files
+## Loader / Signal
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/loader-ready` | Signal boot loader ready (Plymouth can quit) |
+| POST | `/api/signal-ready` | Page ready signal (Plymouth transition) |
+
+---
+
+## Static Assets
 
 | Path | Purpose |
 |------|---------|
-| `/setup.html` | WiFi/network configuration page (AP captive portal target) |
-| `/network_setup.html` | Network setup wizard |
-| `/player_link.html` | Pairing code card + enrollment |
-| `/system_config.html` | System Options admin panel |
-| `/player.html` | Content renderer |
-| `/loader.html` | Boot loader animation |
+| `/cache/*` | Serves cached content files from `player/cache/good/` |
+| `/*` | Static files from `public/` directory |
 
 ---
 
-## Data Flow Summary
+## WiFi Connection Flow (Internal)
 
 ```
-Phone QR Scan → WIFI:T:nopass;S:SSID;H:true;;
-  → Phone joins AP (wlan0, 192.168.4.0/24)
-  → iOS checks captive.apple.com:80 → redirected to setup.html
-  → User configures WiFi on setup.html → POST /api/wifi/configure
-  → Device drops AP, connects WiFi → POST /api/enroll → ODS Cloud
-  → GET /api/device/info → player_link.html shows pairing code
-  → User enters code at ods-cloud.com/pair → POST /api/pairing/verify (Cloud)
-  → Player polls /api/player/content → renders playlist
+Phone → connects to ODS AP (hidden SSID) → captive portal → setup.html
+  → POST /api/wifi/configure { ssid, password }
+  → Server saves wpa_supplicant.conf
+  → Server responds { success: true } (phone gets response before AP drops)
+  → 2s delay
+  → killall hostapd/dnsmasq/wpa_supplicant
+  → ip addr flush wlan0 + ip link set wlan0 up
+  → wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf
+  → 10s wait for WPA association
+  → wpa_cli reconfigure
+  → 5s wait
+  → busybox udhcpc -i wlan0 (DHCP — dhclient not installed)
+  → 5s verify via wpa_cli status
+  → Connected → network_setup.html polls /api/status → redirect to player_link.html
+  → Failed → killall wpa_supplicant + systemctl start ods-setup-ap (restart AP)
 ```
+
+**Total endpoints: 42**
