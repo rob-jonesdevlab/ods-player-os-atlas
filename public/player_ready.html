@@ -86,7 +86,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             position: fixed;
             top: 0;
             left: 0;
@@ -110,6 +110,7 @@
             text-align: center;
             max-width: 600px;
             padding: 40px;
+            margin-top: 10vh;
         }
 
         .logo {
@@ -303,19 +304,19 @@
         }
 
         .offline-border.active {
-            border-width: 0.675px;
+            border-width: 0.450px;
         }
 
         /* ─── Stage 4: Marching Ants (Templates 0, 4) ─── */
         .offline-border.anim-ants {
-            border: 0.675px solid transparent;
+            border: 0.450px solid transparent;
             background-image:
                 linear-gradient(90deg, var(--ob-stage4) 50%, transparent 50%),
                 linear-gradient(90deg, var(--ob-stage4) 50%, transparent 50%),
                 linear-gradient(0deg, var(--ob-stage4) 50%, transparent 50%),
                 linear-gradient(0deg, var(--ob-stage4) 50%, transparent 50%);
             background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
-            background-size: 20px 0.675px, 20px 0.675px, 0.675px 20px, 0.675px 20px;
+            background-size: 20px 0.450px, 20px 0.450px, 0.450px 20px, 0.450px 20px;
             background-position: 0 0, 100% 100%, 0 100%, 100% 0;
             animation: marching-ants 1s linear infinite;
         }
@@ -332,7 +333,7 @@
 
         /* ─── Stage 4: Breathing Glow (Template 2) ─── */
         .offline-border.anim-glow {
-            border: 0.675px solid var(--ob-stage4);
+            border: 0.450px solid var(--ob-stage4);
             animation: breathing-glow 2s ease-in-out infinite;
         }
 
@@ -358,17 +359,17 @@
 
             0%,
             100% {
-                border-width: 0.675px;
+                border-width: 0.450px;
             }
 
             50% {
-                border-width: 1.35px;
+                border-width: 0.90px;
             }
         }
 
         /* ─── Stage 4: Conic Gradient Rotation (Template 3) ─── */
         .offline-border.anim-conic {
-            border: 0.675px solid transparent;
+            border: 0.450px solid transparent;
             border-image: conic-gradient(var(--ob-stage4), var(--ob-stage3), var(--ob-stage4)) 1;
             animation: conic-rotation 2s linear infinite;
         }
@@ -506,6 +507,7 @@
         let progressTimer = null;
         let currentSlideIndex = 0;
         let assets = [];
+        let hasConnected = false; // Track if WS has ever connected
 
         // ─── Status Pill Updates ───
         function updatePill(dotColor, text, pulse = false) {
@@ -534,6 +536,7 @@
 
             socket.on('connect', () => {
                 console.log('[WS] Connected');
+                hasConnected = true;
                 updatePill('#14b8a6', 'Connected to ODS Cloud');
                 clearOfflineBorder();
                 // Update cloud status in info table
@@ -576,15 +579,16 @@
                 updatePill('#ef4444', 'Disconnected');
                 startOfflineBorder();
                 const cloudEl = document.getElementById('infoCloud');
-                if (cloudEl) { cloudEl.textContent = 'Disconnected'; cloudEl.className = 'info-value disconnected'; }
+                if (cloudEl) { cloudEl.textContent = 'Reconnecting...'; cloudEl.className = 'info-value disconnected'; }
             });
 
             socket.on('connect_error', (err) => {
                 console.error('[WS] Connection error:', err.message);
-                updatePill('#f97316', 'Reconnecting...', true);
+                const label = hasConnected ? 'Reconnecting...' : 'Connecting...';
+                updatePill('#f97316', label, true);
                 startOfflineBorder();
                 const cloudEl = document.getElementById('infoCloud');
-                if (cloudEl) { cloudEl.textContent = 'Reconnecting...'; cloudEl.className = 'info-value'; }
+                if (cloudEl) { cloudEl.textContent = label; cloudEl.className = 'info-value'; }
             });
         }
 
