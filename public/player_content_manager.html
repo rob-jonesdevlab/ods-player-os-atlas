@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Otter Digital Signage</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            cursor: none;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* ─── Slideshow Container ─── */
+        .slideshow {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 1;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 1.2s ease;
+            z-index: 1;
+        }
+
+        .slide.active {
+            opacity: 1;
+            z-index: 2;
+        }
+
+        .slide.outgoing {
+            opacity: 0;
+            z-index: 1;
+        }
+
+        .slide img {
+            max-width: 100%;
+            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .slide video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* ─── Progress Bar ─── */
+        .slide-progress {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.3);
+            z-index: 100;
+            width: 0%;
+            transition: width linear;
+        }
+
+        /* ─── Empty State ─── */
+        .empty-state {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            background: #000;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.5rem;
+            z-index: 50;
+        }
+
+        .empty-state.visible {
+            display: flex;
+        }
+
+        .empty-state .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            border-top-color: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ─── Offline Border ─── */
+        :root {
+            --ob-stage1: #FFFF00;
+            --ob-stage2: #FFA500;
+            --ob-stage3: #FF0000;
+            --ob-stage4: #FF0000;
+            --ob-stage4-glow: #FF0000;
+        }
+
+        .offline-border {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 150;
+            border: 0.450px solid transparent;
+            transition: border-color 2s ease;
+        }
+
+        .offline-border.active {
+            border-style: solid;
+            border-width: 0.450px;
+        }
+
+        .offline-border.anim-heartbeat {
+            border-color: var(--ob-stage4);
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+
+            0%,
+            100% {
+                border-width: 0.450px;
+            }
+
+            50% {
+                border-width: 0.90px;
+            }
+        }
+
+        .offline-border.anim-ants {
+            border: 0.450px solid transparent;
+            background-image:
+                linear-gradient(90deg, var(--ob-stage4) 50%, transparent 50%),
+                linear-gradient(90deg, var(--ob-stage4) 50%, transparent 50%),
+                linear-gradient(0deg, var(--ob-stage4) 50%, transparent 50%),
+                linear-gradient(0deg, var(--ob-stage4) 50%, transparent 50%);
+            background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+            background-size: 20px 0.450px, 20px 0.450px, 0.450px 20px, 0.450px 20px;
+            background-position: 0 0, 100% 100%, 0 100%, 100% 0;
+            animation: marching-ants 1s linear infinite;
+        }
+
+        @keyframes marching-ants {
+            0% {
+                background-position: 0 0, 100% 100%, 0 100%, 100% 0;
+            }
+
+            100% {
+                background-position: 20px 0, -20px 100%, 0 -20px, 100% 20px;
+            }
+        }
+
+        .offline-border.anim-glow {
+            border: 0.450px solid var(--ob-stage4);
+            animation: breathing-glow 2s ease-in-out infinite;
+        }
+
+        @keyframes breathing-glow {
+
+            0%,
+            100% {
+                box-shadow: inset 0 0 10px var(--ob-stage4-glow), 0 0 10px var(--ob-stage4-glow);
+            }
+
+            50% {
+                box-shadow: inset 0 0 25px var(--ob-stage4-glow), 0 0 35px var(--ob-stage4-glow);
+            }
+        }
+
+        .offline-border.anim-conic {
+            border: 0.450px solid transparent;
+            border-image: conic-gradient(var(--ob-stage4), var(--ob-stage3), var(--ob-stage4)) 1;
+            animation: conic-rotation 2s linear infinite;
+        }
+
+        @keyframes conic-rotation {
+            0% {
+                filter: hue-rotate(0deg);
+            }
+
+            100% {
+                filter: hue-rotate(360deg);
+            }
+        }
+
+        .offline-border.anim-blink {
+            animation: sync-blink 2s steps(1) infinite;
+        }
+
+        @keyframes sync-blink {
+
+            0%,
+            49.9% {
+                border-color: #000000;
+            }
+
+            50%,
+            100% {
+                border-color: #ffffff;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Slideshow Container -->
+    <div class="slideshow" id="slideshow"></div>
+
+    <!-- Progress Bar -->
+    <div class="slide-progress" id="slideProgress"></div>
+
+    <!-- Empty State (redirects to player_status) -->
+    <div class="empty-state" id="emptyState">
+        <div class="spinner"></div>
+        <div>Loading content...</div>
+    </div>
+
+    <!-- Offline Border Overlay -->
+    <div class="offline-border" id="offlineBorder"></div>
+
+    <script>
+        // ========================================
+        // ODS PLAYER CONTENT MANAGER
+        // Renders playlist content (images/videos)
+        // ========================================
+
+        const CONTENT_POLL_INTERVAL = 60 * 1000;  // Check for content updates every 60s
+        let currentPlaylist = null;
+        let currentHash = null;
+        let assets = [];
+        let currentSlideIndex = 0;
+        let slideTimer = null;
+        let progressTimer = null;
+
+        // ─── Offline Border State ───
+        const OFFLINE_TEMPLATES = [
+            { name: 'Standard Logic', stages: ['#FFFF00', '#FFA500', '#FF0000', '#FF0000'], animation: 'ants' },
+            { name: 'Minimal & Neutral', stages: ['#F2D2BD', '#CC7722', '#361010', '#000000'], animation: 'blink' },
+            { name: 'Tokyo Night', stages: ['#24283b', '#e0af68', '#f7768e', '#f7768e'], animation: 'glow', glowColor: 'rgba(247, 118, 142, 0.8)' },
+            { name: 'Catppuccin', stages: ['#f5e0dc', '#fab387', '#eba0ac', '#eba0ac'], animation: 'conic' },
+            { name: 'Monokai Pro', stages: ['#a9dc76', '#fc9867', '#ff6188', '#ff6188'], animation: 'ants' },
+            { name: 'Natural & Calm', stages: ['#87a980', '#d2b48c', '#e2725b', '#e2725b'], animation: 'heartbeat' }
+        ];
+
+        let offlineStart = null;
+        let offlineBorderTimer = null;
+        let activeTemplateIndex = 0;
+        let debugMode = false;
+        let debugTimeMultiplier = 1;
+
+        // ─── Offline Border Functions ───
+        function applyTemplate(index) {
+            const t = OFFLINE_TEMPLATES[index];
+            if (!t) return;
+            activeTemplateIndex = index;
+            const root = document.documentElement.style;
+            root.setProperty('--ob-stage1', t.stages[0]);
+            root.setProperty('--ob-stage2', t.stages[1]);
+            root.setProperty('--ob-stage3', t.stages[2]);
+            root.setProperty('--ob-stage4', t.stages[3]);
+            root.setProperty('--ob-stage4-glow', t.glowColor || t.stages[3]);
+        }
+
+        function getOfflineMinutes() {
+            if (!offlineStart) return 0;
+            return ((Date.now() - offlineStart) / 60000) * debugTimeMultiplier;
+        }
+
+        function getStage(minutes) {
+            if (minutes < 30) return 1;
+            if (minutes < 60) return 2;
+            if (minutes < 120) return 3;
+            return 4;
+        }
+
+        function updateOfflineBorder() {
+            if (!offlineStart) return;
+            const minutes = getOfflineMinutes();
+            const stage = getStage(minutes);
+            const t = OFFLINE_TEMPLATES[activeTemplateIndex];
+            const border = document.getElementById('offlineBorder');
+
+            border.classList.remove('anim-ants', 'anim-glow', 'anim-heartbeat', 'anim-conic', 'anim-blink');
+
+            if (stage < 4) {
+                border.className = 'offline-border active';
+                border.style.borderColor = t.stages[stage - 1];
+                border.style.animation = '';
+                border.style.backgroundImage = '';
+                border.style.boxShadow = '';
+            } else {
+                border.className = 'offline-border active anim-' + t.animation;
+                border.style.borderColor = '';
+            }
+        }
+
+        function startOfflineBorder() {
+            if (offlineStart) return;
+            offlineStart = Date.now();
+            applyTemplate(activeTemplateIndex);
+            updateOfflineBorder();
+            offlineBorderTimer = setInterval(updateOfflineBorder, 5000);
+        }
+
+        function clearOfflineBorder() {
+            offlineStart = null;
+            clearInterval(offlineBorderTimer);
+            offlineBorderTimer = null;
+            const border = document.getElementById('offlineBorder');
+            border.className = 'offline-border';
+            border.style.borderColor = '';
+            border.style.animation = '';
+            border.style.backgroundImage = '';
+            border.style.boxShadow = '';
+        }
+
+        // ─── Content Fetch ───
+        async function fetchContent() {
+            try {
+                const resp = await fetch('/api/player/content');
+                const data = await resp.json();
+                console.log('[Content] Fetched:', data);
+
+                if (!data.hasContent || !data.playlist || data.playlist.assets.length === 0) {
+                    console.log('[Content] No content available — redirecting to status');
+                    window.location.href = '/player_status.html';
+                    return null;
+                }
+
+                // Check for content updates (hash changed)
+                if (currentHash && data.playlist.config_hash === currentHash) {
+                    console.log('[Content] No changes (hash match)');
+                    return null;  // No update needed
+                }
+
+                currentHash = data.playlist.config_hash;
+                currentPlaylist = data.playlist;
+                clearOfflineBorder();
+                return data.playlist;
+
+            } catch (err) {
+                console.error('[Content] Fetch error:', err);
+                // Server might be restarting — start offline border but don't redirect
+                startOfflineBorder();
+
+                // If we have no content at all, go back to status
+                if (!currentPlaylist) {
+                    setTimeout(() => { window.location.href = '/player_status.html'; }, 5000);
+                }
+                return null;
+            }
+        }
+
+        // ─── Slideshow Renderer ───
+        function renderPlaylist(playlist) {
+            const container = document.getElementById('slideshow');
+            const empty = document.getElementById('emptyState');
+
+            assets = playlist.assets.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+            if (assets.length === 0) {
+                empty.classList.add('visible');
+                return;
+            }
+
+            empty.classList.remove('visible');
+            container.innerHTML = '';
+
+            assets.forEach((asset, i) => {
+                const slide = document.createElement('div');
+                slide.className = 'slide' + (i === 0 ? ' active' : '');
+                slide.id = `slide-${i}`;
+
+                if (asset.type === 'video') {
+                    const video = document.createElement('video');
+                    video.src = `/cache/${asset.filename}`;
+                    video.autoplay = (i === 0);
+                    video.muted = true;
+                    video.loop = false;
+                    video.playsInline = true;
+                    video.preload = 'auto';
+                    video.addEventListener('ended', () => nextSlide());
+                    video.addEventListener('error', (e) => {
+                        console.error(`[Video] Error loading ${asset.filename}:`, e);
+                        nextSlide();
+                    });
+                    slide.appendChild(video);
+                } else {
+                    // Image (default)
+                    const img = document.createElement('img');
+                    img.src = `/cache/${asset.filename}`;
+                    img.alt = asset.filename || '';
+                    img.loading = (i < 2) ? 'eager' : 'lazy';
+                    img.addEventListener('error', (e) => {
+                        console.error(`[Image] Error loading ${asset.filename}:`, e);
+                    });
+                    slide.appendChild(img);
+                }
+
+                container.appendChild(slide);
+            });
+
+            // Start slideshow
+            currentSlideIndex = 0;
+            startSlideTimer();
+            console.log(`[Content] Rendering ${assets.length} assets`);
+        }
+
+        function startSlideTimer() {
+            clearTimeout(slideTimer);
+
+            const asset = assets[currentSlideIndex];
+            if (!asset) return;
+
+            const slide = document.getElementById(`slide-${currentSlideIndex}`);
+            const video = slide?.querySelector('video');
+
+            // For videos, let the 'ended' event handle transition
+            if (asset.type === 'video' && video) {
+                video.currentTime = 0;
+                video.play().catch(e => console.warn('[Video] Autoplay blocked:', e));
+                // Progress bar for video
+                const updateVideoProgress = () => {
+                    if (video.duration) {
+                        const pct = (video.currentTime / video.duration) * 100;
+                        document.getElementById('slideProgress').style.width = `${pct}%`;
+                    }
+                    if (!video.ended) requestAnimationFrame(updateVideoProgress);
+                };
+                requestAnimationFrame(updateVideoProgress);
+                return;
+            }
+
+            // For images, use duration timer
+            const duration = (asset.duration || 10) * 1000;
+            const progressBar = document.getElementById('slideProgress');
+            progressBar.style.transition = 'none';
+            progressBar.style.width = '0%';
+
+            requestAnimationFrame(() => {
+                progressBar.style.transition = `width ${duration}ms linear`;
+                progressBar.style.width = '100%';
+            });
+
+            slideTimer = setTimeout(() => nextSlide(), duration);
+        }
+
+        function nextSlide() {
+            const prevIndex = currentSlideIndex;
+            currentSlideIndex = (currentSlideIndex + 1) % assets.length;
+
+            // Pause previous video
+            const prevSlide = document.getElementById(`slide-${prevIndex}`);
+            const prevVideo = prevSlide?.querySelector('video');
+            if (prevVideo) prevVideo.pause();
+
+            // Transition
+            prevSlide?.classList.remove('active');
+            prevSlide?.classList.add('outgoing');
+
+            const nextSlideEl = document.getElementById(`slide-${currentSlideIndex}`);
+            nextSlideEl?.classList.add('active');
+
+            setTimeout(() => {
+                prevSlide?.classList.remove('outgoing');
+            }, 1200);
+
+            startSlideTimer();
+        }
+
+        // ─── Content Polling ───
+        setInterval(async () => {
+            const playlist = await fetchContent();
+            if (playlist) {
+                renderPlaylist(playlist);
+            }
+        }, CONTENT_POLL_INTERVAL);
+
+        // ─── Keyboard Shortcuts ───
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+Alt+Shift+O → system options
+            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'O') {
+                window.location.href = '/system_options.html';
+                return;
+            }
+            // Ctrl+Alt+Shift+I → player status (info)
+            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'I') {
+                e.preventDefault();
+                window.location.href = '/player_status.html';
+                return;
+            }
+            // Ctrl+Alt+Shift+K → kill/restart signage
+            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'K') {
+                e.preventDefault();
+                console.log('[SHORTCUT] Ctrl+Alt+Shift+K — restart signage');
+                try {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/system/restart-signage', false);
+                    xhr.send();
+                    console.log('[SHORTCUT] Restart response:', xhr.responseText);
+                } catch (err) {
+                    console.error('[SHORTCUT] Restart failed:', err);
+                }
+                return;
+            }
+            // Ctrl+Alt+Shift+B → debug: cycle offline border template
+            if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'B') {
+                e.preventDefault();
+                debugMode = true;
+                activeTemplateIndex = (activeTemplateIndex + 1) % OFFLINE_TEMPLATES.length;
+                debugTimeMultiplier = 60;
+                applyTemplate(activeTemplateIndex);
+                if (!offlineStart) offlineStart = Date.now();
+                updateOfflineBorder();
+                return;
+            }
+            // Block all other keys
+            e.preventDefault();
+            e.stopPropagation();
+        }, true);
+
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // ─── Init ───
+        async function init() {
+            console.log('[ContentManager] Starting...');
+            applyTemplate(0);
+
+            // Fetch and render content
+            const playlist = await fetchContent();
+            if (playlist) {
+                renderPlaylist(playlist);
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

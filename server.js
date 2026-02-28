@@ -939,7 +939,7 @@ app.post('/api/cache/clean', (req, res) => {
 });
 
 // ========================================
-// CONTENT DELIVERY APIs (for player_ready.html renderer)
+// CONTENT DELIVERY APIs (for player_status.html renderer)
 // ========================================
 
 const cloudSync = require('./player/cloud-sync');

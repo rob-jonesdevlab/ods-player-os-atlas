@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-    <title>Enrolling Device</title>
+    <title>Registering Device</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
@@ -145,7 +145,7 @@
                         status.textContent = '✅ Device already paired!';
                         status.className = 'success';
                         retryInfo.textContent = 'Redirecting to player...';
-                        setTimeout(() => { window.location.href = '/player_ready.html'; }, 2000);
+                        setTimeout(() => { window.location.href = '/player_status.html'; }, 2000);
                     } else {
                         status.textContent = '✅ Registered! Pairing code:';
                         status.className = 'success';
@@ -190,7 +190,7 @@
                     document.getElementById('status').textContent = '✅ Paired successfully!';
                     document.getElementById('pairing-display').innerHTML = '';
                     document.getElementById('retry-info').textContent = 'Redirecting to player...';
-                    setTimeout(() => { window.location.href = '/player_ready.html'; }, 2000);
+                    setTimeout(() => { window.location.href = '/player_status.html'; }, 2000);
                 } else {
                     // Keep polling every 5 seconds
                     setTimeout(() => pollPairingStatus(deviceUuid), 5000);
@@ -210,7 +210,7 @@
             }
             if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'I') {
                 e.preventDefault();
-                window.location.href = '/player_ready.html';
+                window.location.href = '/player_status.html';
                 return;
             }
             if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'K') {

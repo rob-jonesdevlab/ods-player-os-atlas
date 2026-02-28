@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>ODS Player</title>
+    <title>Otter Digital Signage</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@700&display=swap"
         rel="stylesheet" />
@@ -456,8 +456,7 @@
             <div class="logo">
                 <img src="/resources/ods-player-logo.png" alt="ODS" />
             </div>
-            <div class="waiting-title">Player Ready</div>
-            <p class="waiting-subtitle">Otter Digital Signage</p>
+            <div class="waiting-title">Otter Digital Signage</div>
 
             <div class="info-table">
                 <div class="info-row">
@@ -679,7 +678,8 @@
 
                 if (config.playlist && config.playlist.assets?.length > 0) {
                     updatePill('#10b981', 'Ready');
-                    await loadPlaylist(config.playlist);
+                    // Redirect to content manager after 3s
+                    setTimeout(() => { window.location.href = '/player_content_manager.html'; }, 3000);
                 } else {
                     updatePill('#f59e0b', 'Waiting for content...', true);
                     showWaiting();
@@ -1088,13 +1088,13 @@
                 console.log('[Cache] Status:', cache);
 
                 if (cache.canOperate && cache.assetCount > 0) {
-                    // Has cached content — show Cached status
-                    updatePill('#ffffff', 'Cached content available', false);
+                    // Has cached content — update Status field to Cached (white)
                     const cloudEl = document.getElementById('infoCloud');
                     if (cloudEl) { cloudEl.textContent = 'Cached'; cloudEl.className = 'info-value cached'; }
 
-                    // TODO: When content renderer page is built, redirect after 3s:
-                    // setTimeout(() => { window.location.href = '/player_renderer.html'; }, 3000);
+                    // Show Loading cache pill (purple pulse) then redirect
+                    updatePill('#a855f7', 'Loading cache...', true);
+                    setTimeout(() => { window.location.href = '/player_content_manager.html'; }, 3000);
                     return true;
                 }
             } catch (err) {

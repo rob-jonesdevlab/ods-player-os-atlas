@@ -510,7 +510,7 @@
                 e.preventDefault(); window.location.href = '/system_options.html'; return;
             }
             if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'I') {
-                e.preventDefault(); window.location.href = '/player_ready.html'; return;
+                e.preventDefault(); window.location.href = '/player_status.html'; return;
             }
             if (e.ctrlKey && e.altKey && e.shiftKey && e.key === 'K') {
                 e.preventDefault(); fetch('/api/system/restart-signage', { method: 'POST' }).catch(() => { }); return;
@@ -648,7 +648,7 @@
                     if (d.paired) {
                         clearInterval(pollInterval);
                         updateStatus('#10b981', '✓ Paired successfully!');
-                        setTimeout(() => { window.location.href = '/player_ready.html'; }, 2000);
+                        setTimeout(() => { window.location.href = '/player_status.html'; }, 2000);
                     }
                 } catch (e) { console.error('Poll error:', e); }
             }, 5000);
@@ -660,7 +660,7 @@
                 if (data.device_uuid === deviceUuid) {
                     clearInterval(pollInterval);
                     updateStatus('#10b981', '✓ Paired successfully!');
-                    setTimeout(() => { window.location.href = '/player_ready.html'; }, 2000);
+                    setTimeout(() => { window.location.href = '/player_status.html'; }, 2000);
                 }
             });
         }
@@ -686,7 +686,7 @@
 
                 if (!response.ok) {
                     const error = await response.json();
-                    if (error.paired) { window.location.href = '/player_ready.html'; return; }
+                    if (error.paired) { window.location.href = '/player_status.html'; return; }
                     if (response.status === 429) {
                         const s = getRateLimitState(); s.cooldownUntil = Date.now() + COOLDOWN_DURATION_MS; s.count = 0;
                         setRateLimitState(s); showCooldown(); return;
