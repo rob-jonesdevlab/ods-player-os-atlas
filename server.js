@@ -189,38 +189,47 @@ app.post('/api/wifi/configure', (req, res) => {
         // Step 3: Async — stop AP and switch wlan0 to client mode (phone disconnects here)
         console.log(`[WiFi] Credentials saved for "${ssid}" — stopping AP in 2s...`);
         setTimeout(() => {
-            // systemctl stop ods-setup-ap runs ods-setup-ap.sh stop, which:
-            //   1. Kills hostapd + dnsmasq
-            //   2. Flushes wlan0 IP
-            //   3. Starts wpa_supplicant via systemctl
+            // Step 3a: Stop the AP service (kills hostapd/dnsmasq, frees wlan0)
             exec('sudo systemctl stop ods-setup-ap', { timeout: 10000 }, () => {
-                console.log('[WiFi] AP stopped — wpa_supplicant should be starting via stop handler');
-                // Wait 5s for wpa_supplicant to start and associate with the network
-                setTimeout(() => {
-                    // Reconfigure wpa_supplicant to pick up the new credentials
-                    exec('sudo wpa_cli -i wlan0 reconfigure 2>/dev/null', { timeout: 5000 }, () => {
-                        // Wait 3s for association, then request DHCP lease
-                        setTimeout(() => {
-                            exec('sudo dhclient wlan0 2>/dev/null', { timeout: 15000 }, () => {
-                                // Verify connection after 10 seconds
-                                setTimeout(() => {
-                                    exec('iwgetid -r', (err, stdout) => {
-                                        const connectedSsid = (stdout || '').trim();
-                                        if (connectedSsid) {
-                                            console.log(`[WiFi] Connected to "${connectedSsid}"`);
-                                        } else {
-                                            console.log('[WiFi] Connection failed — restarting AP');
-                                            exec('sudo systemctl start ods-setup-ap', (e) => {
-                                                if (e) console.error('[WiFi] Failed to restart AP:', e.message);
-                                                else console.log('[WiFi] AP restarted — user can try again');
-                                            });
-                                        }
-                                    });
-                                }, 10000);
-                            });
-                        }, 3000);
-                    });
-                }, 5000);
+                console.log('[WiFi] AP stopped — switching wlan0 to client mode');
+
+                // Step 3b: Start wpa_supplicant on wlan0 with saved credentials
+                // The systemd service uses D-Bus mode (-u -s) without -i wlan0, so we run it directly
+                const wpaCmd = 'sudo ip link set wlan0 up 2>/dev/null; sudo wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf 2>/dev/null';
+                exec(wpaCmd, { timeout: 10000 }, () => {
+                    console.log('[WiFi] wpa_supplicant started — waiting for association...');
+
+                    // Step 3c: Wait 8s for WPA association, then reconfigure + DHCP
+                    setTimeout(() => {
+                        exec('sudo wpa_cli -i wlan0 reconfigure 2>/dev/null', { timeout: 5000 }, () => {
+                            // Step 3d: Get IP via busybox udhcpc (dhclient is not installed)
+                            setTimeout(() => {
+                                exec('busybox udhcpc -i wlan0 -n -q 2>/dev/null', { timeout: 15000 }, () => {
+                                    console.log('[WiFi] DHCP request sent');
+
+                                    // Step 4: Verify connection
+                                    setTimeout(() => {
+                                        exec('wpa_cli -i wlan0 status | grep wpa_state', (err, stdout) => {
+                                            const state = (stdout || '').trim();
+                                            const connected = state.includes('COMPLETED');
+                                            if (connected) {
+                                                exec('iwgetid -r', (e, ssidOut) => {
+                                                    console.log(`[WiFi] Connected! State: ${state}, SSID: ${(ssidOut || '').trim()}`);
+                                                });
+                                            } else {
+                                                console.log(`[WiFi] Connection failed (state: ${state}) — restarting AP`);
+                                                exec('killall wpa_supplicant 2>/dev/null; sudo systemctl start ods-setup-ap', (e) => {
+                                                    if (e) console.error('[WiFi] Failed to restart AP:', e.message);
+                                                    else console.log('[WiFi] AP restarted — user can try again');
+                                                });
+                                            }
+                                        });
+                                    }, 5000);
+                                });
+                            }, 3000);
+                        });
+                    }, 8000);
+                });
             });
         }, 2000);  // 2s delay gives phone time to receive response
     });
