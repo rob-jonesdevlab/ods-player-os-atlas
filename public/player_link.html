@@ -57,15 +57,15 @@
             box-sizing: border-box;
         }
 
-        /* Glass Card — high opacity for signage readability */
+        /* Glass Card — translucent with branded background */
         .glass-card {
             background: linear-gradient(135deg,
-                    rgba(255, 255, 255, 0.95) 0%,
-                    rgba(255, 255, 255, 0.92) 50%,
-                    rgba(255, 255, 255, 0.95) 100%);
-            border: 1px solid rgba(255, 255, 255, 0.7);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08),
-                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+                    rgba(255, 255, 255, 0.88) 0%,
+                    rgba(255, 255, 255, 0.78) 50%,
+                    rgba(255, 255, 255, 0.85) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
 
         .glass-pill {
@@ -148,7 +148,7 @@
         }
 
         .heading-accent {
-            color: #2563eb;
+            color: #0f172a;
         }
 
         .heading-sub {
@@ -160,7 +160,7 @@
 
         .code-label {
             font-size: 1rem;
-            color: #2563eb;
+            color: #0f172a;
             font-weight: 700;
             letter-spacing: 0.15em;
             text-transform: uppercase;
@@ -202,15 +202,15 @@
         }
 
         .step-num-active {
-            background: rgba(60, 131, 246, 0.2);
-            color: #3c83f6;
-            border: 1px solid rgba(60, 131, 246, 0.3);
+            background: rgba(15, 23, 42, 0.1);
+            color: #0f172a;
+            border: 1px solid rgba(15, 23, 42, 0.2);
         }
 
         .step-num-inactive {
-            background: rgba(26, 26, 46, 0.06);
-            color: #1a1a2e;
-            border: 1px solid rgba(26, 26, 46, 0.1);
+            background: rgba(15, 23, 42, 0.06);
+            color: #0f172a;
+            border: 1px solid rgba(15, 23, 42, 0.1);
         }
 
         .step-title {
@@ -405,7 +405,9 @@
 
                 <div class="step-list">
                     <div class="step-item">
-                        <div class="step-num step-num-active">1</div>
+                        <div class="step-num step-num-active"
+                            style="background: rgba(37, 99, 235, 0.15); color: #2563eb; border-color: rgba(37, 99, 235, 0.3);">
+                            1</div>
                         <div>
                             <div class="step-title">Scan the QR code or visit <span
                                     class="url">ods-cloud.com/pair</span></div>
