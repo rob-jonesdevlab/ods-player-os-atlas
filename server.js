@@ -50,71 +50,85 @@ app.get('/redirect', (req, res) => {
 // Get network status — per-interface details
 app.get('/api/status', (req, res) => {
     exec('iwgetid -r', (error, stdout) => {
-        const ssid = (stdout || '').trim();
-        const wifi_connected = !!ssid;
+        const iwgetidSsid = (stdout || '').trim();
 
-        exec('ip route | grep default', (error, stdout) => {
-            const routeOutput = (stdout || '');
-            // Check for both eth0 (standard) and end0 (Armbian Pi5)
-            const ethernet_connected = routeOutput.includes('eth0') || routeOutput.includes('end0');
-            const hasInternet = wifi_connected || ethernet_connected;
+        // Fallback: if iwgetid fails, check wpa_cli status (catches cases where
+        // WiFi is associated but iwgetid doesn't report it)
+        const checkWifi = (callback) => {
+            if (iwgetidSsid) return callback(iwgetidSsid, true);
+            exec('sudo wpa_cli -i wlan0 status 2>/dev/null', { timeout: 3000 }, (e, wpaOut) => {
+                const wpaState = (wpaOut || '').match(/wpa_state=(\S+)/);
+                const wpaSsid = (wpaOut || '').match(/^ssid=(.+)$/m);
+                if (wpaState && wpaState[1] === 'COMPLETED' && wpaSsid) {
+                    callback(wpaSsid[1], true);
+                } else {
+                    callback('', false);
+                }
+            });
+        };
 
-            // Get per-interface IP details
-            const ethIface = routeOutput.includes('end0') ? 'end0' : 'eth0';
+        checkWifi((ssid, wifi_connected) => {
+            exec('ip route | grep default', (error, stdout) => {
+                const routeOutput = (stdout || '');
+                // Check for both eth0 (standard) and end0 (Armbian Pi5)
+                const ethernet_connected = routeOutput.includes('eth0') || routeOutput.includes('end0');
+                const hasInternet = wifi_connected || ethernet_connected;
 
-            // Gather per-interface details in parallel
-            const getIfaceDetails = (iface, callback) => {
-                exec(`ip -4 addr show ${iface} 2>/dev/null | grep inet`, (e, ipOut) => {
-                    const ipMatch = (ipOut || '').match(/inet\s+([\d.]+)\/([\d]+)/);
-                    const ip = ipMatch ? ipMatch[1] : null;
-                    const subnet = ipMatch ? ipMatch[2] : null;
 
-                    exec(`ip route | grep "default.*${iface}" | awk '{print $3}'`, (e, gwOut) => {
-                        const gateway = (gwOut || '').trim() || null;
+                // Gather per-interface details in parallel
+                const getIfaceDetails = (iface, callback) => {
+                    exec(`ip -4 addr show ${iface} 2>/dev/null | grep inet`, (e, ipOut) => {
+                        const ipMatch = (ipOut || '').match(/inet\s+([\d.]+)\/([\d]+)/);
+                        const ip = ipMatch ? ipMatch[1] : null;
+                        const subnet = ipMatch ? ipMatch[2] : null;
 
-                        // Check if DHCP client is running for this interface
-                        exec(`ps aux | grep -E "dhclient.*${iface}|dhcpcd.*${iface}|NetworkManager" | grep -v grep`, (e, dhcpOut) => {
-                            const isDhcp = !!(dhcpOut || '').trim();
+                        exec(`ip route | grep "default.*${iface}" | awk '{print $3}'`, (e, gwOut) => {
+                            const gateway = (gwOut || '').trim() || null;
 
-                            callback({ ip, subnet, gateway, dhcp: isDhcp ? 'DHCP' : 'Static' });
+                            // Check if DHCP client is running for this interface
+                            exec(`ps aux | grep -E "dhclient.*${iface}|dhcpcd.*${iface}|NetworkManager" | grep -v grep`, (e, dhcpOut) => {
+                                const isDhcp = !!(dhcpOut || '').trim();
+
+                                callback({ ip, subnet, gateway, dhcp: isDhcp ? 'DHCP' : 'Static' });
+                            });
                         });
                     });
-                });
-            };
+                };
 
-            // Get DNS (shared system DNS from resolv.conf)
-            exec('grep "^nameserver" /etc/resolv.conf | head -2 | awk \'{print $2}\' | paste -sd ", "', (e, dnsOut) => {
-                const dns = (dnsOut || '').trim() || null;
+                // Get DNS (shared system DNS from resolv.conf)
+                exec('grep "^nameserver" /etc/resolv.conf | head -2 | awk \'{print $2}\' | paste -sd ", "', (e, dnsOut) => {
+                    const dns = (dnsOut || '').trim() || null;
 
-                getIfaceDetails(ethIface, (ethDetails) => {
-                    getIfaceDetails('wlan0', (wifiDetails) => {
-                        res.json({
-                            wifi_connected,
-                            ethernet_connected,
-                            hasInternet,
-                            ssid: ssid || null,
-                            ethernet: {
-                                connected: ethernet_connected,
-                                interface: ethIface,
-                                ip: ethDetails.ip,
-                                subnet: ethDetails.subnet,
-                                gateway: ethDetails.gateway,
-                                dns: dns,
-                                type: ethDetails.dhcp
-                            },
-                            wifi: {
-                                connected: wifi_connected,
-                                interface: 'wlan0',
+                    getIfaceDetails(ethIface, (ethDetails) => {
+                        getIfaceDetails('wlan0', (wifiDetails) => {
+                            res.json({
+                                wifi_connected,
+                                ethernet_connected,
+                                hasInternet,
                                 ssid: ssid || null,
-                                ip: wifiDetails.ip,
-                                subnet: wifiDetails.subnet,
-                                gateway: wifiDetails.gateway,
-                                dns: dns,
-                                type: wifiDetails.dhcp
-                            },
-                            // Legacy fields for backward compat
-                            ip_address: ethDetails.ip || wifiDetails.ip || null,
-                            dns: dns
+                                ethernet: {
+                                    connected: ethernet_connected,
+                                    interface: ethIface,
+                                    ip: ethDetails.ip,
+                                    subnet: ethDetails.subnet,
+                                    gateway: ethDetails.gateway,
+                                    dns: dns,
+                                    type: ethDetails.dhcp
+                                },
+                                wifi: {
+                                    connected: wifi_connected,
+                                    interface: 'wlan0',
+                                    ssid: ssid || null,
+                                    ip: wifiDetails.ip,
+                                    subnet: wifiDetails.subnet,
+                                    gateway: wifiDetails.gateway,
+                                    dns: dns,
+                                    type: wifiDetails.dhcp
+                                },
+                                // Legacy fields for backward compat
+                                ip_address: ethDetails.ip || wifiDetails.ip || null,
+                                dns: dns
+                            });
                         });
                     });
                 });
@@ -122,7 +136,6 @@ app.get('/api/status', (req, res) => {
         });
     });
 });
-
 // Scan for available WiFi networks
 app.get('/api/wifi/scan', (req, res) => {
     // Guard: if AP mode is active (hostapd running), skip scan to avoid disrupting it
