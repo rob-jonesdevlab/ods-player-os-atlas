@@ -1,9 +1,8 @@
 # ODS Player OS — Atlas
 
-**Version:** 1.x (Atlas) · **Golden Image:** v5  
-**Code Name:** Atlas — Foundation Release  
-**Purpose:** Dedicated kiosk runtime for ODS digital signage players  
-**Last Updated:** February 19, 2026
+**Version:** v9-3-2-ORIGIN · **Code Name:** Atlas  
+**Purpose:** Dedicated player OS runtime for ODS digital signage  
+**Last Updated:** February 28, 2026
 
 ---
 
@@ -21,10 +20,15 @@ The golden image is built offline on the `jdl-mini-box` build server, then flash
 |---------|---------|
 | **Device Pairing** | QR code pairing with ODS Cloud dashboard |
 | **Network Config** | WiFi + Ethernet setup UI (`network_setup.html`) |
-| **System Config** | On-device diagnostics panel (`system_config.html`, `Ctrl+Alt+Shift+O`) |
+| **Captive Portal** | Auto-launching setup for phone-based WiFi config (`captive_portal.html`) |
+| **System Options** | On-device diagnostics panel (`system_options.html`, `Ctrl+Alt+Shift+O`) |
+| **Player Ready** | Status page with glass card + wallpaper support (`player_ready.html`, `Ctrl+Alt+Shift+I`) |
+| **Status Pill** | 8-stage color pill showing connection/config state on Player Ready |
+| **Glass Card** | Smokey dark glass card with backdrop-filter blur when wallpaper assigned |
 | **Kiosk Mode** | Auto-recovering Chromium kiosk (systemd restart loop) |
 | **Boot UX** | Seamless black boot → Plymouth splash → Chromium (zero flash) |
-| **Shutdown Splash** | Plymouth splash on reboot/poweroff with correct service deps |
+| **Keyboard Shortcuts** | `Ctrl+Alt+Shift+I` (Info), `K` (Kill), `O` (Options), `B` (Debug) |
+| **Offline Border** | Configurable animated border (6 templates, 0.450px default) |
 | **VT Lockdown** | getty tty1-6 masked, SysRq disabled, VT switching blocked |
 | **Sleep Prevention** | `consoleblank=0`, DPMS off, screen blanking off, suspend masked |
 | **Remote Access** | RustDesk with self-hosted relay server |
@@ -69,36 +73,35 @@ Power On
 ## Architecture
 
 ```
-ods-player-os-atlas/
-├── public/                  # Web server public directory
-│   ├── network_setup.html   # Network configuration UI (default kiosk page)
-│   ├── system_config.html   # System diagnostics panel (Ctrl+Alt+Shift+O)
-│   ├── pairing.html         # Device pairing interface
-│   ├── qr.html              # QR code display
-│   ├── enrolling.html       # Enrollment status
-│   ├── setup.html           # Initial setup
-│   ├── loader.html          # Boot loader screen
-│   ├── player_link.html     # Player link page
-│   └── ODS_Background.png   # Background image asset
-├── server.js                # Express server (port 8080)
-│                             # APIs: /api/status, /api/wifi/configure, /api/qr,
-│                             #       /api/enroll, /api/loader-ready,
-│                             #       /api/system/info, /api/system/reboot,
-│                             #       /api/system/shutdown, /api/system/cache-clear,
-│                             #       /api/system/factory-reset, /api/system/logs
-├── package.json             # Node.js dependencies (express, qrcode, ws)
-├── VERSION                  # Current version code name ("atlas")
+ods-player-atlas/
+├── public/                       # Web server public directory
+│   ├── network_setup.html        # Network configuration UI (default kiosk page)
+│   ├── player_ready.html         # Player Ready status page (glass card + status pill)
+│   ├── player_link.html          # QR code pairing flow
+│   ├── captive_portal.html       # WiFi AP captive portal setup
+│   ├── system_options.html       # System diagnostics panel (Ctrl+Alt+Shift+O)
+│   ├── enrolling.html            # Enrollment status
+│   ├── loader.html               # Boot loader screen
+│   └── resources/
+│       └── designs/
+│           └── ODS_Background.png  # Default wallpaper for glass card
+├── server.js                     # Express server (port 8080, 43 API endpoints)
+├── package.json                  # Node.js dependencies
+├── VERSION                       # Current version code name ("atlas")
 ├── bin/
-│   └── ods_health_monitor.sh  # Health monitoring script
+│   └── ods_health_monitor.sh     # Health monitoring script
 ├── brand/
-│   └── splash/              # Plymouth theme assets (landscape/portrait)
-│       ├── landscape/       # 1920x1080 (watermark.png, ods.plymouth, throbber/)
-│       └── portrait/        # 1080x1920
+│   └── splash/                   # Plymouth theme assets (landscape/portrait)
 ├── scripts/
-│   ├── inject_atlas.sh      # Golden image builder (loop-mount + inject)
-│   ├── atlas_firstboot.sh   # 11-step automated first boot (873 lines)
-│   ├── atlas-firstboot.service  # systemd oneshot service
-│   └── atlas_secrets.conf   # Credentials (NOT in git)
+│   ├── inject_atlas.sh           # Golden image builder (loop-mount + inject)
+│   ├── atlas_firstboot.sh        # 11-step automated first boot (~1400 lines)
+│   ├── atlas-firstboot.service   # systemd oneshot service
+│   ├── start-player-os-ATLAS.sh  # Chromium --app mode launcher
+│   ├── ods-setup-ap.sh           # WiFi AP management
+│   └── atlas_secrets.conf        # Credentials (NOT in git)
+├── .arch/
+│   ├── project.md                # Full architecture documentation
+│   └── api_doc.md                # API documentation (43 endpoints)
 └── README.md
 ```
 
@@ -187,17 +190,20 @@ scp jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-rpi5-golden-v5.img ~/De
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/api/status` | Network status (WiFi SSID, Ethernet) |
+| GET | `/api/status` | Network + device status (hostname, WiFi, Ethernet) |
 | POST | `/api/wifi/configure` | Configure WiFi (SSID + password) |
 | GET | `/api/qr` | Generate setup QR code |
 | POST | `/api/enroll` | Trigger device enrollment |
-| GET | `/api/loader-ready` | Signal boot loader is ready (Plymouth quit trigger) |
-| GET | `/api/system/info` | System diagnostics (hostname, CPU temp, RAM, storage, IP, etc.) |
+| GET | `/api/loader-ready` | Signal boot loader is ready |
+| GET | `/api/system/info` | System diagnostics |
+| POST | `/api/system/restart-signage` | Kill/restart Chromium (Ctrl+Alt+Shift+K) |
 | POST | `/api/system/reboot` | Reboot device |
 | POST | `/api/system/shutdown` | Shutdown device |
 | POST | `/api/system/cache-clear` | Clear Chromium cache |
-| POST | `/api/system/factory-reset` | Factory reset (wipe Chromium config + reboot) |
+| POST | `/api/system/factory-reset` | Factory reset (wipe + reboot) |
 | GET | `/api/system/logs` | View system logs |
+
+> See `.arch/api_doc.md` for all 43 endpoints.
 
 ---
 
@@ -242,13 +248,14 @@ scp jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-rpi5-golden-v5.img ~/De
 
 ## Next Version
 
-**Beacon** (v2.x) — Dynamic configuration & remote management
+**v9-3-2** (current) — Player Ready Overhaul & Glass Card
 
-- Remote background customization via Content Library
-- Advanced playlist features
-- Analytics integration
-- Multi-zone support
-- OTA updates from ODS Cloud dashboard
+- Smokey glass card with wallpaper support
+- 8-stage status pill
+- Keyboard shortcuts: `Ctrl+Alt+Shift+I/K/O/B`
+- Config `appearance` section (wallpaper, card style)
+- Restart-signage API endpoint
+- File renames for clarity
 
 ---
 
@@ -260,7 +267,8 @@ scp jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-rpi5-golden-v5.img ~/De
 npm install
 npm start
 # Access: http://localhost:8080/network_setup.html
-# Access: http://localhost:8080/system_config.html
+# Access: http://localhost:8080/system_options.html
+# Access: http://localhost:8080/player_ready.html
 ```
 
 ### Deploy Changes to Device

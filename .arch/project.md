@@ -1,8 +1,8 @@
 # ODS Player Atlas — Architecture
 
 **Last Updated:** February 28, 2026  
-**Current Version:** v9-3-1-ORIGIN  
-**Status:** Production-ready P:0 → P:1 → P:2 pipeline — WiFi AP connection flow verified end-to-end, compact card layout, ODS-branded captive portal, configurable DHCP/Static, signage-friendly UI
+**Current Version:** v9-3-2-ORIGIN  
+**Status:** Production-ready P:0 → P:1 → P:2 pipeline — WiFi AP connection flow verified, glass card wallpaper, status pill, keyboard shortcuts, configurable offline border
 
 ---
 
@@ -132,6 +132,24 @@ See `.arch/image_processes.md` for detailed build commands and `.arch/build_guid
 - ✅ **HOSTNAME label** — network_setup changed "Device Name" → "HOSTNAME", strips "ODS-" prefix from displayed value
 - ✅ **API documentation** — `.arch/api_doc.md` updated with all 42 endpoints including WiFi connection flow diagram
 
+### Completed — v9.3.2 Player Ready Overhaul & Glass Card Sprint
+- ✅ **File renames** — `player.html` → `player_ready.html`, `setup.html` → `captive_portal.html`, `system_config.html` → `system_options.html` with all cross-references updated
+- ✅ **Status pill** — Dark-themed glass-pill on player_ready with 8-stage color progression (amber → teal → blue → purple → green → red → orange → reset)
+- ✅ **Hostname ALL CAPS** — `text-transform: uppercase` on hostname display (matching brand standard)
+- ✅ **Smokey glass card** — `backdrop-filter: blur(24px)` + `rgba(10,10,10,0.65)` on player_ready when wallpaper set via config `appearance.wallpaper`
+- ✅ **Smart connection status** — `hasConnected` flag: shows "Connecting..." on first attempt, "Reconnecting..." only after prior success
+- ✅ **"Status" label** — replaced "ODS Cloud" with binary "Online"/"Offline" in info table (pill handles transitional states)
+- ✅ **Config `appearance` section** — `{ wallpaper, ready_card_style }` added to device config response
+- ✅ **Offline border refinement** — Progressive reduction: 6px → 3px → 1.75px → 1.125px → 0.675px → **0.450px** (heartbeat max 0.90px)
+- ✅ **Keyboard shortcuts**:
+  - `Ctrl+Alt+Shift+I` — Player Info (shows Player Ready status page from any page)
+  - `Ctrl+Alt+Shift+K` — Kill/Restart signage (calls `/api/system/restart-signage`)
+  - `Ctrl+Alt+Shift+O` — System options
+  - `Ctrl+Alt+Shift+B` — Debug (cycle offline border templates)
+- ✅ **`/api/system/restart-signage`** — New endpoint: kills Chromium so systemd relaunches it (support tool)
+- ✅ **Signage-friendly text** — 3.5rem heading, 1.7rem sub, 1.3-1.4rem info on player_ready
+- ✅ **`os.hostname()`** — Added to `/api/status` response for hostname display
+
 ### 7 Root Cause Fixes (v9-1-0 → v9-1-7)
 
 | # | Root Cause | Fix | Commit |
@@ -179,6 +197,7 @@ Complete lineage of every P:0 golden image ever built:
 | v9-2-1 | ORIGIN | 2/27/26 | AP stability, dynamic card width, 3-state network indicators, ethernet auto-redirect |
 | v9-3-0 | ORIGIN | 2/27/26 | Captive portal auto-launch, ODS-branded setup.html, configurable DHCP/Static, API docs, repo rename |
 | **v9-3-1** | **ORIGIN** | **2/28/26** | **WiFi connection fix (wpa_supplicant/udhcpc), compact card layout, HOSTNAME label, step centered** |
+| **v9-3-2** | **ORIGIN** | **2/28/26** | **File renames, glass card + wallpaper, status pill, keyboard shortcuts (I/K/O/B), config appearance, restart-signage API, offline border 0.450px** |
 
 ### Commit History (v8-v9)
 
@@ -213,6 +232,11 @@ Complete lineage of every P:0 golden image ever built:
 | v9-3-1 | `47b73a6` | WiFi connection: bypass systemd, use direct killall + busybox udhcpc |
 | v9-3-1 | `e61937c` | Card layout: fit-content width, divider removed, padding balanced |
 | v9-3-1 | `c345f89` | Remove step 1 desc, center step numbers, HOSTNAME label |
+| v9-3-2 | `4b89ff4` | Restore waiting screen + 1.75px offline border |
+| v9-3-2 | `518f390` | Hostname CAPS, status pill, file renames (player→player_ready, setup→captive_portal, system_config→system_options) |
+| v9-3-2 | `5644f4f` | Smart ODS Cloud status, balanced layout, border 0.450px |
+| v9-3-2 | `0b96ede` | Smokey glass card, wallpaper support, Status label, Ctrl+Alt+Shift+S shortcut |
+| v9-3-2 | `4146b7e` | Ctrl+Alt+Shift+I (Player Info), Ctrl+Alt+Shift+K (Kill/Restart), restart-signage API |
 
 ### Pending / Next Version
 - [x] P:0 golden image rebuild → **v9-3-0-ORIGIN**
@@ -220,6 +244,13 @@ Complete lineage of every P:0 golden image ever built:
 - [x] Compact card layout (fit-content + centered steps)
 - [x] HOSTNAME label (replaced Device Name)
 - [x] API documentation (.arch/api_doc.md — 42 endpoints)
+- [x] File renames (player→player_ready, setup→captive_portal, system_config→system_options)
+- [x] Glass card + wallpaper support (player_ready.html)
+- [x] Status pill (8-stage color progression)
+- [x] Keyboard shortcuts (Ctrl+Alt+Shift+I/K/O/B)
+- [x] Offline border 0.450px
+- [x] `/api/system/restart-signage` endpoint
+- [ ] ODS Cloud — Player Settings UI for wallpaper, border template, appearance config
 - [ ] ODS Cloud — Content delivery pipeline (cloud-sync, cache-manager)
 - [ ] OTA updates from ODS Cloud dashboard
 - [ ] Remote background/content push

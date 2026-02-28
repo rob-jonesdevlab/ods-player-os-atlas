@@ -10,16 +10,16 @@
 
 ## Captive Portal Detection
 
-Auto-redirects phone browsers to `setup.html` when connected to the device's WiFi AP.
+Auto-redirects phone browsers to `captive_portal.html` when connected to the device's WiFi AP.
 
 | Method | Endpoint | Platform | Behavior |
 |--------|----------|----------|----------|
-| GET | `/hotspot-detect.html` | iOS | Serves `setup.html` directly (200) |
-| GET | `/generate_204` | Android | Serves `setup.html` (200 instead of 204) |
+| GET | `/hotspot-detect.html` | iOS | Serves `captive_portal.html` directly (200) |
+| GET | `/generate_204` | Android | Serves `captive_portal.html` (200 instead of 204) |
 | GET | `/gen_204` | Android alt | Same as above |
-| GET | `/connecttest.txt` | Windows | Serves `setup.html` |
+| GET | `/connecttest.txt` | Windows | Serves `captive_portal.html` |
 | GET | `/ncsi.txt` | Windows alt | Same as above |
-| GET | `/redirect` | Fallback | 302 redirect to `/setup.html` |
+| GET | `/redirect` | Fallback | 302 redirect to `/captive_portal.html` |
 
 ---
 
@@ -27,7 +27,7 @@ Auto-redirects phone browsers to `setup.html` when connected to the device's WiF
 
 | Method | Endpoint | Purpose | Response |
 |--------|----------|---------|----------|
-| GET | `/api/status` | Network status (WiFi + Ethernet) | `{ wifi_connected, ethernet_connected, hasInternet, ssid, ethernet: {...}, wifi: {...}, ip_address, dns }` |
+| GET | `/api/status` | Network status (WiFi + Ethernet) | `{ wifi_connected, ethernet_connected, hasInternet, ssid, hostname, ethernet: {...}, wifi: {...}, ip_address, dns }` |
 | POST | `/api/network/configure` | Set static IP or switch to DHCP | Body: `{ interface: "ethernet"|"wifi", mode: "static"|"dhcp", ip, subnet, gateway, dns }` |
 
 ---
@@ -65,6 +65,7 @@ Auto-redirects phone browsers to `setup.html` when connected to the device's WiF
 | Method | Endpoint | Purpose | Notes |
 |--------|----------|---------|-------|
 | GET | `/api/system/info` | Full system diagnostics | `{ hostname, cpu_temp, uptime, ram_usage, ram_percent, storage_usage, storage_percent, os_version, ip_address, dns, display_resolution, ... }` |
+| POST | `/api/system/restart-signage` | Restart signage (kill Chromium, systemd relaunches) | `{ success, message }` — 500ms delay before `pkill -9 chromium` |
 | POST | `/api/system/reboot` | Reboot device | 2s delay before reboot |
 | POST | `/api/system/shutdown` | Shutdown device | 2s delay before shutdown |
 | POST | `/api/system/unpair` | Unpair from ODS Cloud + reboot | Calls cloud API to unpair, clears enrollment flag |
@@ -156,8 +157,19 @@ Phone → connects to ODS AP (hidden SSID) → captive portal → setup.html
   → 5s wait
   → busybox udhcpc -i wlan0 (DHCP — dhclient not installed)
   → 5s verify via wpa_cli status
-  → Connected → network_setup.html polls /api/status → redirect to player_link.html
-  → Failed → killall wpa_supplicant + systemctl start ods-setup-ap (restart AP)
+   → Connected → network_setup.html polls /api/status → redirect to player_link.html
+   → Failed → killall wpa_supplicant + systemctl start ods-setup-ap (restart AP)
 ```
 
-**Total endpoints: 42**
+---
+
+## Keyboard Shortcuts (All Pages)
+
+| Shortcut | Action | Source |
+|----------|--------|--------|
+| `Ctrl+Alt+Shift+O` | System Options page | All pages |
+| `Ctrl+Alt+Shift+I` | Player Info (Player Ready) | All pages |
+| `Ctrl+Alt+Shift+K` | Kill/Restart signage | All pages → `POST /api/system/restart-signage` |
+| `Ctrl+Alt+Shift+B` | Debug: cycle offline border templates | `player_ready.html` only |
+
+**Total endpoints: 43**
