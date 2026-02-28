@@ -429,13 +429,13 @@
                     wifiPollActive = false;
                 } else if (cs.stage === 'configuring') {
                     wifiPollActive = true;
-                    updatePill('#f59e0b', 'Config received...');
+                    updatePill('#14b8a6', 'Config received...');
                 } else if (cs.stage === 'connecting') {
                     wifiPollActive = true;
-                    updatePill('#f59e0b', 'Connecting to network...', true);
+                    updatePill('#3b82f6', 'Connecting to network...', true);
                 } else if (cs.stage === 'obtaining_ip') {
                     wifiPollActive = true;
-                    updatePill('#f59e0b', 'Obtaining IP address...', true);
+                    updatePill('#a855f7', 'Obtaining IP address...', true);
                 } else if (cs.stage === 'connected') {
                     wifiPollActive = true;
                     updatePill('#10b981', 'Connected');
@@ -445,7 +445,7 @@
                     updatePill('#ef4444', 'Connection failed');
                 } else if (cs.stage === 'restarting') {
                     wifiPollActive = true;
-                    updatePill('#f59e0b', 'Please try again...', true);
+                    updatePill('#f97316', 'Please try again...', true);
                 }
             } catch (e) { }
         }, 1500);

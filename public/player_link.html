@@ -563,7 +563,7 @@
 
         function showCooldown() {
             showState('cooldownState');
-            updateStatus('waiting', 'Rate limited', 'Waiting for cooldown');
+            updateStatus('#f59e0b', 'Rate limited', 'Waiting for cooldown', true);
             const state = getRateLimitState();
             const totalDuration = COOLDOWN_DURATION_MS;
             cooldownInterval = setInterval(() => {
@@ -600,30 +600,28 @@
             return s;
         }
 
-        function updateStatus(state, message, details = '') {
+        function updateStatus(color, message, details = '', pulse = false) {
             const dot = document.getElementById('statusDot');
             document.getElementById('statusText').textContent = message;
             const d = document.getElementById('statusDetails');
             if (d) d.textContent = details;
-            if (state === 'waiting') {
-                dot.innerHTML = `<span class="dot-ping"></span><span class="dot-solid"></span>`;
-            } else if (state === 'success') {
-                dot.innerHTML = `<span class="dot-solid" style="background:#10b981;"></span>`;
-            } else if (state === 'error') {
-                dot.innerHTML = `<span class="dot-solid" style="background:#ef4444;"></span>`;
+            if (pulse) {
+                dot.innerHTML = `<span class="dot-ping" style="background:${color};"></span><span class="dot-solid" style="background:${color};"></span>`;
+            } else {
+                dot.innerHTML = `<span class="dot-solid" style="background:${color};"></span>`;
             }
         }
 
         function retryConnection() {
             showState('loadingState');
-            updateStatus('waiting', 'Retrying...', 'Attempting to connect');
+            updateStatus('#f97316', 'Retrying...', 'Attempting to connect', true);
             setTimeout(() => initPairing(), 500);
         }
 
         function showError(message) {
             showState('errorState');
             document.getElementById('errorMessage').textContent = message;
-            updateStatus('error', 'Connection error');
+            updateStatus('#ef4444', 'Connection error');
         }
 
         function generateQR(url) {
@@ -643,7 +641,7 @@
                     const d = await r.json();
                     if (d.paired) {
                         clearInterval(pollInterval);
-                        updateStatus('success', '✓ Paired successfully!');
+                        updateStatus('#10b981', '✓ Paired successfully!');
                         setTimeout(() => { window.location.href = '/player.html'; }, 2000);
                     }
                 } catch (e) { console.error('Poll error:', e); }
@@ -655,7 +653,7 @@
             socket.on('pairing:success', (data) => {
                 if (data.device_uuid === deviceUuid) {
                     clearInterval(pollInterval);
-                    updateStatus('success', '✓ Paired successfully!');
+                    updateStatus('#10b981', '✓ Paired successfully!');
                     setTimeout(() => { window.location.href = '/player.html'; }, 2000);
                 }
             });
@@ -666,7 +664,10 @@
                 if (isInCooldown()) { showCooldown(); return; }
                 deviceUuid = getDeviceUuid();
                 const cpuSerial = getCpuSerial();
-                updateStatus('waiting', 'Connecting...', 'Generating pairing code');
+                updateStatus('#f59e0b', 'Initializing...', '', true);
+
+                // Stage 1: Registering device (teal)
+                updateStatus('#14b8a6', 'Registering device...');
 
                 const response = await fetch(`${API_URL}/api/pairing/generate`, {
                     method: 'POST',
@@ -688,13 +689,18 @@
                 const data = await response.json();
                 pairingCode = data.pairing_code;
 
+                // Stage 2: Generating code (blue)
+                updateStatus('#3b82f6', 'Generating pairing code...');
+
                 showState('pairingState');
                 document.getElementById('pairingCodeDisplay').textContent =
                     pairingCode.slice(0, 3) + '-' + pairingCode.slice(3);
 
                 generateQR(data.qr_data);
-                updateStatus('waiting', 'Waiting for pairing...',
-                    `Code ${rateLimitState.count}/${MAX_PAIRING_CODES}`);
+
+                // Stage 3: Waiting for pairing (purple pulse)
+                updateStatus('#a855f7', 'Waiting for pairing...',
+                    `Code ${rateLimitState.count}/${MAX_PAIRING_CODES}`, true);
                 startPolling();
                 initWebSocket();
             } catch (error) {
