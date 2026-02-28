@@ -291,6 +291,7 @@ signage ALL=(ALL) NOPASSWD: /usr/sbin/wpa_supplicant *
 signage ALL=(ALL) NOPASSWD: /usr/bin/ip addr *
 signage ALL=(ALL) NOPASSWD: /usr/sbin/hostapd *
 signage ALL=(ALL) NOPASSWD: /usr/bin/killall *
+signage ALL=(ALL) NOPASSWD: /usr/bin/pkill *
 signage ALL=(ALL) NOPASSWD: /usr/sbin/dnsmasq *
 SUDOEOF
     chmod 0440 /etc/sudoers.d/signage

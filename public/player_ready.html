@@ -1044,13 +1044,20 @@
             if (!ws) return;
 
             if (appearance.wallpaper) {
-                // Check if wallpaper is available locally or use URL
+                // Set all background properties inline to prevent zoom flash during restart
+                // (CSS class may not load before first paint)
                 const wallpaperUrl = appearance.wallpaper;
                 ws.style.backgroundImage = `url('${wallpaperUrl}')`;
+                ws.style.backgroundSize = 'cover';
+                ws.style.backgroundPosition = 'center';
+                ws.style.backgroundRepeat = 'no-repeat';
                 ws.classList.add('has-wallpaper');
                 console.log('[Appearance] Wallpaper applied:', wallpaperUrl);
             } else {
                 ws.style.backgroundImage = '';
+                ws.style.backgroundSize = '';
+                ws.style.backgroundPosition = '';
+                ws.style.backgroundRepeat = '';
                 ws.classList.remove('has-wallpaper');
             }
         }

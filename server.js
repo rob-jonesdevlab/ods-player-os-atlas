@@ -444,11 +444,12 @@ app.get('/api/system/info', (req, res) => {
 });
 
 // System actions
-// Restart signage — restarts webserver + kills Chromium so systemd relaunches full boot flow (Ctrl+Alt+Shift+K)
+// Restart signage — detached process restarts webserver + kills Chromium for full boot flow (Ctrl+Alt+Shift+K)
 app.post('/api/system/restart-signage', (req, res) => {
     console.log('[SYSTEM] Restart signage requested');
     res.json({ success: true, message: 'Restarting signage...' });
-    setTimeout(() => exec('sudo systemctl restart ods-webserver && sleep 1 && pkill -9 chromium'), 500);
+    // Must run detached — systemctl restart kills THIS process, so && chains would die
+    setTimeout(() => exec('nohup bash -c "sudo systemctl restart ods-webserver; sleep 2; sudo pkill -9 chromium" &'), 500);
 });
 
 app.post('/api/system/reboot', (req, res) => {
