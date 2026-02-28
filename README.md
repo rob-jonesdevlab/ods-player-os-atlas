@@ -80,7 +80,7 @@ ods-player-atlas/
 │   ├── player_link.html          # QR code pairing flow
 │   ├── captive_portal.html       # WiFi AP captive portal setup
 │   ├── system_options.html       # System diagnostics panel (Ctrl+Alt+Shift+O)
-│   ├── enrolling.html            # Enrollment status
+│   ├── player_registration.html            # Enrollment status
 │   ├── loader.html               # Boot loader screen
 │   └── resources/
 │       └── designs/

@@ -93,9 +93,9 @@ Adapted from legacy `ods_power_mgr.sh`:
   1. Reads CPU serial from `/proc/cpuinfo`
   2. Generates/persists UUID at `/home/signage/ODS/config/device_uuid`
   3. Calls ODS Cloud `POST /api/pairing/generate` on port 3001
-  4. Returns pairing code to `enrolling.html`
+  4. Returns pairing code to `player_registration.html`
 - **Retry:** `ods-enrollment-retry.timer` — calls `/api/enroll` every 30 min until `enrollment.flag` exists
-- **UI:** `enrolling.html` rewritten with 5-attempt escalating retry (3s→30s), pairing code display, pairing status polling
+- **UI:** `player_registration.html` rewritten with 5-attempt escalating retry (3s→30s), pairing code display, pairing status polling
 
 ## Services (9 total)
 
@@ -133,7 +133,7 @@ Adapted from legacy `ods_power_mgr.sh`:
 | `scripts/atlas_firstboot.sh` | Openbox, 9 services, 4-layer sleep, display configs, enrollment retry |
 | `server.js` | Admin auth, signal-ready, enrollment via pairing API, hasInternet |
 | `public/system_config.html` | Admin panel (login + gated tools) |
-| `public/enrolling.html` | Rewritten with retry + pairing code display |
+| `public/player_registration.html` | Rewritten with retry + pairing code display |
 | `.arch/build_guide.md` | jdl-mini-box password stored permanently |
 | `.arch/project.md` | Password placeholder updated |
 
