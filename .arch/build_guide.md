@@ -70,12 +70,12 @@ sudo -A bash scripts/inject_atlas.sh \
   /home/jones-dev-lab/atlas-build/ods-atlas-golden-v9-1-7-ORIGIN.img
 ```
 
-### 5. Transfer to Mac
+### 5. Copy Image to Mac Desktop (ALWAYS)
+Every golden image must be copied to Mac Desktop immediately after build:
 ```bash
 # From Mac:
-export SSHPASS='mnbvcxz!!!'
-sshpass -e scp -o StrictHostKeyChecking=no \
-  jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-golden-v9-1-7-ORIGIN.img ~/Desktop/
+SSHPASS='mnbvcxz!!!' sshpass -e scp -o StrictHostKeyChecking=no \
+  jones-dev-lab@10.111.123.134:~/atlas-build/ods-atlas-golden-vX-Y-Z-TAG.img ~/Desktop/
 ```
 
 ### 6. Flash to SD Card
