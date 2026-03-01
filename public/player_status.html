@@ -327,19 +327,19 @@
         }
 
         .offline-border.active {
-            border-width: 0.450px;
+            border-width: 1px;
         }
 
         /* ─── Stage 4: Marching Ants (Templates 0, 4) ─── */
         .offline-border.anim-ants {
-            border: 0.450px solid transparent;
+            border: 1px solid transparent;
             background-image:
                 linear-gradient(90deg, var(--ob-stage4) 50%, transparent 50%),
                 linear-gradient(90deg, var(--ob-stage4) 50%, transparent 50%),
                 linear-gradient(0deg, var(--ob-stage4) 50%, transparent 50%),
                 linear-gradient(0deg, var(--ob-stage4) 50%, transparent 50%);
             background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
-            background-size: 20px 0.450px, 20px 0.450px, 0.450px 20px, 0.450px 20px;
+            background-size: 20px 1px, 20px 1px, 1px 20px, 1px 20px;
             background-position: 0 0, 100% 100%, 0 100%, 100% 0;
             animation: marching-ants 1s linear infinite;
         }
@@ -356,7 +356,7 @@
 
         /* ─── Stage 4: Breathing Glow (Template 2) ─── */
         .offline-border.anim-glow {
-            border: 0.450px solid var(--ob-stage4);
+            border: 1px solid var(--ob-stage4);
             animation: breathing-glow 2s ease-in-out infinite;
         }
 
@@ -382,7 +382,7 @@
 
             0%,
             100% {
-                border-width: 0.450px;
+                border-width: 1px;
             }
 
             50% {
@@ -392,7 +392,7 @@
 
         /* ─── Stage 4: Conic Gradient Rotation (Template 3) ─── */
         .offline-border.anim-conic {
-            border: 0.450px solid transparent;
+            border: 1px solid transparent;
             border-image: conic-gradient(var(--ob-stage4), var(--ob-stage3), var(--ob-stage4)) 1;
             animation: conic-rotation 2s linear infinite;
         }
