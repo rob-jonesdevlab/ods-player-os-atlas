@@ -645,6 +645,9 @@
             }
         }, HEARTBEAT_INTERVAL);
 
+        // ─── Config Polling (sync name, wallpaper, playlist changes) ───
+        setInterval(fetchConfig, CONFIG_POLL_INTERVAL);
+
         // ─── Config Fetch ───
         async function fetchConfig() {
             try {

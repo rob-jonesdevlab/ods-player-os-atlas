@@ -1,5 +1,5 @@
 const express = require('express');
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const QRCode = require('qrcode');
@@ -448,8 +448,14 @@ app.get('/api/system/info', (req, res) => {
 app.post('/api/system/restart-signage', (req, res) => {
     console.log('[SYSTEM] Restart signage requested');
     res.json({ success: true, message: 'Restarting signage...' });
-    // Must run detached — systemctl restart kills THIS process, so && chains would die
-    setTimeout(() => exec('nohup bash -c "sudo systemctl restart ods-webserver; sleep 2; sudo pkill -9 chromium" &'), 500);
+    // Must run detached — systemctl restart kills THIS process
+    setTimeout(() => {
+        const child = spawn('sudo', ['systemctl', 'restart', 'ods-webserver'], {
+            detached: true,
+            stdio: 'ignore'
+        });
+        child.unref();
+    }, 500);
 });
 
 app.post('/api/system/reboot', (req, res) => {
