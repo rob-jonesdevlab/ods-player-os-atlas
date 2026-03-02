@@ -314,10 +314,45 @@ After user submits WiFi creds via captive portal, server.js tears down AP and co
 - **Sudoers required:** `wpa_supplicant`, `killall`, `busybox`, `ip addr *` for the `signage` user
 - **Sequence:** `killall hostapd/dnsmasq/wpa_supplicant` → `ip addr flush wlan0` → `ip link set wlan0 up` → `wpa_supplicant -B -i wlan0 -c conf` → 10s wait → `wpa_cli reconfigure` → `busybox udhcpc` → verify via `wpa_cli status`
 
+### Remote Dev Lab Access via Reverse SSH
+
+The dev device and jdl-mini-box are behind NAT on the lab network (`10.111.123.x`). Remote access uses a persistent reverse SSH tunnel from jdl-mini-box to the relay server.
+
+**Chain:** Mac → ods-relay-server (134.199.136.112:22) → jdl-mini-box (localhost:2222) → device (10.111.123.102)
+
+**Step-by-step deployment (validated 2026-03-02):**
+
+```bash
+# 1. Copy file to relay server
+scp -i ~/.ssh/id_ed25519_ods_relay_dod file.js root@134.199.136.112:/tmp/
+
+# 2. SSH to relay (interactive — needed for password prompts)
+ssh -i ~/.ssh/id_ed25519_ods_relay_dod root@134.199.136.112
+
+# 3. From relay, SSH to jdl-mini-box via reverse tunnel
+ssh -o StrictHostKeyChecking=no -p 2222 jones-dev-lab@localhost
+# Password: mnbvcxz!!!
+
+# 4. From relay, SCP file to jdl-mini-box
+scp -o StrictHostKeyChecking=no -P 2222 /tmp/file.js jones-dev-lab@localhost:/tmp/
+
+# 5. From jdl-mini-box, SCP to device
+scp -o StrictHostKeyChecking=no /tmp/file.js root@10.111.123.102:/home/signage/ODS/player/
+
+# 6. From jdl-mini-box, restart webserver on device
+ssh -o StrictHostKeyChecking=no root@10.111.123.102 "systemctl restart ods-webserver"
+```
+
+> **Critical:** The relay has NO private keys — cannot initiate SSH from relay → jdl-mini-box without password auth. The reverse tunnel (`-R 2222:localhost:22`) is initiated BY jdl-mini-box, not the relay. Use `jones-dev-lab` user with password `mnbvcxz!!!` for the port-2222 hop.
+
+> **File paths on device:** Player code lives at `/home/signage/ODS/` (NOT `/home/signage/player/`). Example: `/home/signage/ODS/player/cloud-sync.js`, `/home/signage/ODS/server.js`.
+
 ## Environment
 
 | Machine | IP | User | Purpose |
 |---------|-----|------|---------|
+| ods-relay-server | `134.199.136.112` | root | SSH relay + RustDesk relay |
 | ArPi4b (player) | `10.111.123.102` | root / signage | Production test device |
 | jdl-mini-box | `10.111.123.134` | jones-dev-lab | Golden image build server (Ubuntu) |
 | Mac (dev) | local | robert.leejones | Development, SCP transfer, Lima builds |
+
