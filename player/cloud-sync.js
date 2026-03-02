@@ -12,6 +12,7 @@ const { io: SocketIO } = require('socket.io-client');
 const fs = require('fs');
 const path = require('path');
 const cache = require('./cache-manager');
+const http = require('http');
 
 // ============================================================
 // CONFIGURATION
@@ -71,6 +72,29 @@ function getCpuSerial() {
     } catch {
         return 'UNKNOWN';
     }
+}
+
+/**
+ * Fetch device info from the local player server
+ * Returns system info (hostname, MAC, memory, uptime, etc.)
+ */
+async function getDeviceInfo() {
+    return new Promise((resolve) => {
+        const url = 'http://localhost:8080/api/system/info';
+        const req = http.get(url, { timeout: 3000 }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(data));
+                } catch {
+                    resolve({});
+                }
+            });
+        });
+        req.on('error', () => resolve({}));
+        req.on('timeout', () => { req.destroy(); resolve({}); });
+    });
 }
 
 // ============================================================
@@ -200,15 +224,28 @@ function start(options = {}) {
 
     // --- Connection Events ---
 
-    socket.on('connect', () => {
+    socket.on('connect', async () => {
         console.log('[CloudSync] ✅ Connected to ODS Cloud');
         isOnline = true;
 
-        // Register this player
+        // Collect device info for registration
+        const info = await getDeviceInfo();
+
+        // Register this player with full device fingerprint
         socket.emit('register', {
             cpu_serial: cpuSerial,
             device_uuid: enrollment.device_uuid,
-            name: `Atlas-${cpuSerial.slice(-6)}`
+            name: `Atlas-${cpuSerial.slice(-6)}`,
+            hostname: info.hostname || null,
+            rustdesk_id: info.rustdesk_id || null,
+            ip_address: info.ip_address || null,
+            mac_address: info.mac_address || null,
+            os_version: info.os_version || info.os_pretty || null,
+            disk_free_mb: info.disk_free_mb || null,
+            memory_total_mb: info.memory_total_mb || null,
+            memory_available_mb: info.memory_available_mb || null,
+            uptime_seconds: info.uptime_seconds || null,
+            screen_resolution: info.display_resolution || null
         });
     });
 
@@ -242,10 +279,18 @@ function start(options = {}) {
 
     // --- Heartbeat ---
 
-    heartbeatTimer = setInterval(() => {
+    heartbeatTimer = setInterval(async () => {
         if (socket && socket.connected) {
+            const info = await getDeviceInfo();
             socket.emit('heartbeat', {
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                rustdesk_id: info.rustdesk_id || null,
+                ip_address: info.ip_address || null,
+                disk_free_mb: info.disk_free_mb || null,
+                memory_total_mb: info.memory_total_mb || null,
+                memory_available_mb: info.memory_available_mb || null,
+                uptime_seconds: info.uptime_seconds || null,
+                screen_resolution: info.display_resolution || null
             });
         }
     }, HEARTBEAT_INTERVAL);
