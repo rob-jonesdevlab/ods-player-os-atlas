@@ -195,12 +195,20 @@ function fetchJSON(url, token) {
  * @param {string} token - Auth token
  * @returns {Promise<string>} Path to downloaded file
  */
-function downloadFile(url, destPath, token) {
+function downloadFile(url, destPath, token, maxRedirects = 5) {
     return new Promise((resolve, reject) => {
         const client = url.startsWith('https') ? https : http;
-        const req = client.get(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        }, (res) => {
+        const headers = {};
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const req = client.get(url, { headers }, (res) => {
+            // Follow redirects (302, 301, 307, 308)
+            if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+                if (maxRedirects <= 0) {
+                    return reject(new Error(`Too many redirects downloading ${url}`));
+                }
+                return downloadFile(res.headers.location, destPath, null, maxRedirects - 1)
+                    .then(resolve, reject);
+            }
             if (res.statusCode !== 200) {
                 return reject(new Error(`HTTP ${res.statusCode} downloading ${url}`));
             }
