@@ -170,12 +170,9 @@ function verifyChecksum(filePath, expected) {
 function fetchJSON(url, token) {
     return new Promise((resolve, reject) => {
         const client = url.startsWith('https') ? https : http;
-        const req = client.get(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            }
-        }, (res) => {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        const req = client.get(url, { headers }, (res) => {
             if (res.statusCode !== 200) {
                 return reject(new Error(`HTTP ${res.statusCode} from ${url}`));
             }
@@ -228,7 +225,7 @@ function downloadFile(url, destPath, token) {
  * @param {string} token - Auth token
  * @returns {{ changed: boolean, serverHash: string }}
  */
-async function checkConfigHash(serverUrl, playerId, token) {
+async function checkConfigHash(serverUrl, playerId, token, deviceUuid) {
     // Load cached config hash
     let cachedHash = null;
     if (fs.existsSync(CONFIG_FILE)) {
@@ -238,10 +235,11 @@ async function checkConfigHash(serverUrl, playerId, token) {
         } catch { /* corrupt config, will re-fetch */ }
     }
 
-    // Fetch server hash
-    const { config_hash: serverHash } = await fetchJSON(
-        `${serverUrl}/api/players/${playerId}/config/hash`, token
-    );
+    // Use public device endpoint (no JWT needed) if device_uuid available
+    const url = deviceUuid
+        ? `${serverUrl}/api/device/config/hash/${deviceUuid}`
+        : `${serverUrl}/api/players/${playerId}/config/hash`;
+    const { config_hash: serverHash } = await fetchJSON(url, deviceUuid ? null : token);
 
     return {
         changed: cachedHash !== serverHash,
@@ -256,10 +254,12 @@ async function checkConfigHash(serverUrl, playerId, token) {
  * @param {string} token - Auth token
  * @returns {object} Player config JSON
  */
-async function fetchConfig(serverUrl, playerId, token) {
-    const config = await fetchJSON(
-        `${serverUrl}/api/players/${playerId}/config`, token
-    );
+async function fetchConfig(serverUrl, playerId, token, deviceUuid) {
+    // Use public device endpoint (no JWT needed) if device_uuid available
+    const url = deviceUuid
+        ? `${serverUrl}/api/device/config/${deviceUuid}`
+        : `${serverUrl}/api/players/${playerId}/config`;
+    const config = await fetchJSON(url, deviceUuid ? null : token);
 
     // Save to disk
     fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
@@ -353,9 +353,10 @@ async function downloadAsset(asset, serverUrl, token) {
  * @param {string} serverUrl - ODS Cloud API URL
  * @param {string} playerId - Player UUID
  * @param {string} token - Auth token
+ * @param {string} [deviceUuid] - Device UUID for public endpoint access
  * @returns {{ success: boolean, downloaded: number, failed: number, removed: number }}
  */
-async function syncContent(serverUrl, playerId, token) {
+async function syncContent(serverUrl, playerId, token, deviceUuid) {
     // Step 0: Acquire lock
     if (!acquireLock()) {
         return { success: false, downloaded: 0, failed: 0, removed: 0, reason: 'locked' };
@@ -365,14 +366,14 @@ async function syncContent(serverUrl, playerId, token) {
         initCacheDirs();
 
         // Step 1: Check if config changed
-        const { changed } = await checkConfigHash(serverUrl, playerId, token);
+        const { changed } = await checkConfigHash(serverUrl, playerId, token, deviceUuid);
         if (!changed) {
             console.log('[Cache] Config unchanged, skipping sync');
             return { success: true, downloaded: 0, failed: 0, removed: 0, reason: 'unchanged' };
         }
 
         // Step 2: Fetch full config
-        const config = await fetchConfig(serverUrl, playerId, token);
+        const config = await fetchConfig(serverUrl, playerId, token, deviceUuid);
 
         if (!config.playlist || !config.playlist.assets || config.playlist.assets.length === 0) {
             console.log('[Cache] No playlist assets, nothing to sync');

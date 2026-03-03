@@ -390,18 +390,27 @@ app.get('/api/system/info', (req, res) => {
         hostname: 'hostname',
         cpu_temp: "cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null",
         uptime: 'uptime -p',
+        uptime_seconds: "awk '{print int($1)}' /proc/uptime 2>/dev/null || echo 0",
         ram: "free -h | awk '/^Mem:/ {print $3 \"/\" $2}'",
         ram_percent: "free | awk '/^Mem:/ {printf \"%.0f\", $3/$2*100}'",
+        memory_total_mb: "free -m | awk '/^Mem:/ {print $2}'",
+        memory_available_mb: "free -m | awk '/^Mem:/ {print $7}'",
         storage: "df -h / | awk 'NR==2 {print $3 \"/\" $2}'",
         storage_percent: "df / | awk 'NR==2 {print $5}' | tr -d '%'",
+        disk_free_mb: "df -m / | awk 'NR==2 {print $4}'",
         os_version: 'cat /home/signage/ODS/VERSION 2>/dev/null || echo unknown',
+        player_version: 'cat /home/signage/ODS/PLAYER_VERSION 2>/dev/null || echo unknown',
+        os_pretty: "lsb_release -ds 2>/dev/null || grep PRETTY_NAME /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '\"' || echo unknown",
         ip_address: "hostname -I | awk '{print $1}'",
+        mac_address: "cat /sys/class/net/end0/address 2>/dev/null || cat /sys/class/net/eth0/address 2>/dev/null || echo --",
         dns: "cat /etc/resolv.conf | grep nameserver | head -1 | awk '{print $2}'",
         interfaces: "ip -o addr show | awk '{print $2, $3, $4}' | grep -v '^lo '",
         display_resolution: "DISPLAY=:0 xrandr 2>/dev/null | grep '[*]' | head -1 | awk '{print $1}'",
         display_scale: "echo $ODS_SCALE",
         disk_total: "lsblk -dn -o SIZE /dev/mmcblk0 2>/dev/null || echo '—'",
-        device_name: 'hostname 2>/dev/null || echo unknown'
+        device_name: 'hostname 2>/dev/null || echo unknown',
+        rustdesk_id: 'rustdesk --get-id 2>/dev/null || echo unknown',
+        device_conf: 'cat /home/signage/ODS/device.conf 2>/dev/null || echo {}'
     };
 
     let completed = 0;
@@ -425,18 +434,52 @@ app.get('/api/system/info', (req, res) => {
                     device_name: info.device_name || info.hostname,
                     cpu_temp: info.cpu_temp,
                     uptime: info.uptime,
+                    uptime_seconds: parseInt(info.uptime_seconds) || 0,
                     ram_usage: info.ram,
                     ram_percent: parseInt(info.ram_percent) || 0,
+                    memory_total_mb: parseInt(info.memory_total_mb) || 0,
+                    memory_available_mb: parseInt(info.memory_available_mb) || 0,
                     storage_usage: info.storage,
                     storage_percent: parseInt(info.storage_percent) || 0,
+                    disk_free_mb: parseInt(info.disk_free_mb) || 0,
                     disk_total: info.disk_total ? info.disk_total.trim() : '—',
-                    os_version: info.os_version ? `v${info.os_version.trim().replace(/\./g, '-')}-FLASH` : '—',
-                    version_clean: info.os_version ? `v${info.os_version.trim().replace(/\./g, '-')}` : '—',
+                    // VERSION file: v10-0-1-MANAGER (golden image OS version)
+                    // PLAYER_VERSION file: v2-0-0-BENJI (player software platform)
+                    os_version: (() => {
+                        const raw = (info.os_version || '').trim();
+                        if (!raw || raw === 'unknown') return '—';
+                        const clean = raw.replace(/-[A-Z]+$/, '');
+                        return `Atlas ${clean}`;
+                    })(),
+                    os_version_full: (() => {
+                        const raw = (info.os_version || '').trim();
+                        if (!raw || raw === 'unknown') return '—';
+                        return `Atlas ${raw}`;
+                    })(),
+                    player_version: (() => {
+                        const raw = (info.player_version || '').trim();
+                        if (!raw || raw === 'unknown') return '—';
+                        return raw;
+                    })(),
+                    player_version_clean: (() => {
+                        const raw = (info.player_version || '').trim();
+                        if (!raw || raw === 'unknown') return '—';
+                        return raw.replace(/-[A-Z]+$/, '');
+                    })(),
+                    os_pretty: info.os_pretty && info.os_pretty !== 'unknown' ? info.os_pretty : null,
+                    version_clean: (() => {
+                        const raw = (info.os_version || '').trim();
+                        if (!raw || raw === 'unknown') return '—';
+                        return raw.replace(/-[A-Z]+$/, '');
+                    })(),
                     ip_address: info.ip_address,
+                    mac_address: info.mac_address && info.mac_address !== '--' ? info.mac_address : null,
                     dns: info.dns,
                     interfaces: info.interfaces,
                     display_resolution: info.display_resolution,
-                    display_scale: info.display_scale || '1'
+                    display_scale: info.display_scale || '1',
+                    device_name: info.device_name && info.device_name !== 'unknown' ? info.device_name : null,
+                    rustdesk_id: info.rustdesk_id && info.rustdesk_id !== 'unknown' ? info.rustdesk_id : null
                 });
             }
         });

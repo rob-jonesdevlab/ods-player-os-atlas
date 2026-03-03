@@ -153,7 +153,7 @@ async function doSync() {
     console.log('[CloudSync] Starting content sync...');
 
     try {
-        const result = await cache.syncContent(serverUrl, playerId, token);
+        const result = await cache.syncContent(serverUrl, playerId, token, enrollment.device_uuid);
         lastSyncTime = new Date().toISOString();
         saveSyncState();
 

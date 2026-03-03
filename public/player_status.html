@@ -577,11 +577,11 @@
                     device_uuid: deviceUuid,
                     hostname: sysInfo.hostname || null,
                     ip_address: sysInfo.ip_address || null,
-                    mac_address: null,  // TODO: add mac to /api/system/info
-                    os_version: sysInfo.os_version || null,
-                    disk_free_mb: sysInfo.storage_percent ? (100 - parseInt(sysInfo.storage_percent)) : null,
-                    memory_total_mb: sysInfo.ram_percent ? parseInt(sysInfo.ram_percent) : null,
-                    uptime_seconds: null,  // uptime -p returns human string, not seconds
+                    mac_address: sysInfo.mac_address || null,
+                    os_version: sysInfo.os_pretty || sysInfo.os_version || null,
+                    disk_free_mb: sysInfo.disk_free_mb || null,
+                    memory_total_mb: sysInfo.memory_total_mb || null,
+                    uptime_seconds: sysInfo.uptime_seconds || null,
                     screen_resolution: sysInfo.display_resolution || null
                 });
             });
@@ -638,9 +638,11 @@
                 socket.emit('heartbeat', {
                     player_id: playerId,
                     ip_address: sysInfo.ip_address || null,
-                    disk_free_mb: sysInfo.storage_percent ? (100 - parseInt(sysInfo.storage_percent)) : null,
-                    memory_total_mb: sysInfo.ram_percent ? parseInt(sysInfo.ram_percent) : null,
-                    screen_resolution: sysInfo.display_resolution || null
+                    disk_free_mb: sysInfo.disk_free_mb || null,
+                    memory_total_mb: sysInfo.memory_total_mb || null,
+                    uptime_seconds: sysInfo.uptime_seconds || null,
+                    screen_resolution: sysInfo.display_resolution || null,
+                    rustdesk_id: localStorage.getItem('ods_rustdesk_id') || null
                 });
             }
         }, HEARTBEAT_INTERVAL);
