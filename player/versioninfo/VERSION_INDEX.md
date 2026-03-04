@@ -45,5 +45,6 @@ ods-atlas-golden-vMAJOR-PATCH-TAG.img
 | **v10-0-0** | **`ods-atlas-golden-v10-0-0-MANAGER.img`** | **2026-02-28** | **1.8G** |
 | **v10-0-1** | **`ods-atlas-golden-v10-0-1-MANAGER.img`** | **2026-02-28** | **TBD** |
 | **v10-1-0** | **`ods-atlas-clone-v10-1-0-MANAGER.img`** | **2026-03-04** | **TBD** |
+| **v10-1-1** | **`ods-atlas-golden-v10-1-1-MANAGER.img`** | **2026-03-04** | **TBD** |
 
 See individual release notes in `v*.md` files.

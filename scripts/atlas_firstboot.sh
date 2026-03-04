@@ -347,7 +347,7 @@ except-interface=lo
 DNSEOF
 
     # Deploy AP management script
-    cp "$REPO_SCRIPTS/ods-setup-ap.sh" /usr/local/bin/ods-setup-ap.sh
+    cp /tmp/atlas_repo/scripts/ods-setup-ap.sh /usr/local/bin/ods-setup-ap.sh
     chmod +x /usr/local/bin/ods-setup-ap.sh
     log "  ✅ WiFi AP setup configured (SSID: $AP_SSID, open network)"
 
@@ -398,6 +398,7 @@ deploy_atlas() {
     cp atlas_repo/server.js /home/signage/ODS/
     cp atlas_repo/package.json /home/signage/ODS/
     cp atlas_repo/package-lock.json /home/signage/ODS/ 2>/dev/null || true
+    cp atlas_repo/VERSION /home/signage/ODS/ 2>/dev/null || true
 
     # Copy player modules (cloud-sync, cache-manager)
     if [ -d "atlas_repo/player" ]; then
