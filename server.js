@@ -1038,13 +1038,74 @@ app.post('/api/cache/clean', (req, res) => {
 
 const cloudSync = require('./player/cloud-sync');
 
-// GET /api/player/content — Returns current playlist for the renderer
-app.get('/api/player/content', (req, res) => {
-    const content = cloudSync.getContentForRenderer();
-    if (!content) {
-        return res.json({ hasContent: false, playlist: null });
+// GET /api/player/content — Smart decision tree for fast boot
+// Priority: cache (if unchanged) → live (if changed or no cache) → offline (if no network)
+app.get('/api/player/content', async (req, res) => {
+    try {
+        // Step 1: Check if we have cache at all
+        const cachedContent = cloudSync.getContentForRenderer();
+        const cacheReady = cloudSync.isCacheReady();
+
+        if (cachedContent && cacheReady.ready) {
+            // Cache exists and is complete — check if playlist changed
+            const { changed, offline } = await cloudSync.hasPlaylistChanged();
+
+            if (!changed) {
+                // Unchanged playlist — boot from cache instantly
+                console.log('[Content] 🚀 Cache hit — serving cached content (playlist unchanged)');
+                return res.json({ hasContent: true, playlist: cachedContent, bootMode: 'cache' });
+            }
+
+            if (offline) {
+                // Offline but have cache — use it
+                console.log('[Content] 📴 Offline — serving cached content');
+                return res.json({ hasContent: true, playlist: cachedContent, bootMode: 'offline-cache' });
+            }
+
+            // Playlist changed — fetch live, trigger background sync
+            console.log('[Content] 🔄 Playlist changed — fetching live content');
+            const liveContent = await cloudSync.fetchLiveContent();
+            if (liveContent) {
+                // Trigger background cache download (non-blocking)
+                cloudSync.doSync();
+                return res.json({ hasContent: true, playlist: liveContent, bootMode: 'live-changed' });
+            }
+
+            // Live fetch failed — fall back to stale cache
+            console.log('[Content] ⚠️ Live fetch failed — serving stale cache');
+            return res.json({ hasContent: true, playlist: cachedContent, bootMode: 'stale-cache' });
+        }
+
+        if (cachedContent && !cacheReady.ready) {
+            // Config exists but assets not fully cached — serve with live URLs
+            console.log(`[Content] ⏳ Cache partial (${cacheReady.cached}/${cacheReady.total}) — serving with live fallback`);
+            // Trigger background cache download (non-blocking)
+            cloudSync.doSync();
+            return res.json({ hasContent: true, playlist: cachedContent, bootMode: 'partial-cache' });
+        }
+
+        // No cache at all — fetch live from cloud
+        console.log('[Content] 📡 No cache — fetching live content from cloud');
+        const liveContent = await cloudSync.fetchLiveContent();
+        if (liveContent) {
+            // Trigger background cache download (non-blocking)
+            cloudSync.doSync();
+            return res.json({ hasContent: true, playlist: liveContent, bootMode: 'live-cold' });
+        }
+
+        // No cache AND no network — nothing to show
+        console.log('[Content] ❌ No cache and no network — no content available');
+        return res.json({ hasContent: false, playlist: null, bootMode: 'empty' });
+
+    } catch (error) {
+        console.error('[Content] Decision tree error:', error.message);
+        // Emergency fallback: try cache even if decision tree failed
+        const cachedContent = cloudSync.getContentForRenderer();
+        if (cachedContent) {
+            return res.json({ hasContent: true, playlist: cachedContent, bootMode: 'error-fallback' });
+        }
+        return res.json({ hasContent: false, playlist: null, bootMode: 'error' });
     }
-    res.json({ hasContent: true, playlist: content });
 });
 
 // GET /api/player/sync-status — Returns sync health for system config panel
@@ -1060,6 +1121,12 @@ app.post('/api/player/sync-now', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
+});
+
+// GET /api/player/cache-ready — Check if all assets are cached
+app.get('/api/player/cache-ready', (req, res) => {
+    const cacheStatus = cloudSync.isCacheReady();
+    res.json(cacheStatus);
 });
 
 // Serve cached content files directly (for renderer <img>/<video> tags)

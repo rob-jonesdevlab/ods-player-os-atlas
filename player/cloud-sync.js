@@ -344,7 +344,7 @@ function getStatus() {
 
 /**
  * Get current playlist content for the renderer
- * Returns cached config's playlist with local file paths + zone layout data
+ * Returns cached config's playlist with local file paths + cloud URL fallbacks
  */
 function getContentForRenderer() {
     const config = cache.getCachedConfig();
@@ -352,20 +352,29 @@ function getContentForRenderer() {
         return null;
     }
 
-    // Map each asset to its local cached path
+    const serverUrl = process.env.ODS_SERVER_URL || 'https://api.ods-cloud.com';
+
+    // Map each asset to its local cached path + live cloud URL fallback
     const assets = config.playlist.assets.map(asset => {
         const localPath = cache.getCachedAssetPath(asset.id);
+        // Build full cloud URL for live fallback (images/videos)
+        const liveUrl = asset.url
+            ? (asset.url.startsWith('http') ? asset.url : `${serverUrl}${asset.url}`)
+            : null;
         return {
             id: asset.id,
             type: asset.type,
             filename: asset.filename,
             url: asset.url || null,
+            liveUrl: liveUrl,
             localPath: localPath,
             duration: asset.duration || 10,
             order: asset.order,
             zone_id: asset.zone_id || 'main',
             transition: asset.transition || 'fade',
-            available: asset.type === 'url' ? true : localPath !== null
+            // Available if: URL type (always), or has local cache, or has live cloud URL
+            available: asset.type === 'url' ? true : (localPath !== null || liveUrl !== null),
+            source: localPath ? 'cache' : 'live'
         };
     });
 
@@ -376,7 +385,116 @@ function getContentForRenderer() {
         assets: assets.filter(a => a.available),
         layout: config.layout || { id: 'single', name: 'Single', orientation: 'landscape', screen_count: 1, zones: [{ id: 'main', label: '1', x: 0, y: 0, w: 100, h: 100 }] },
         zones: config.playlist.zones || null,
-        config_hash: config.config_hash
+        config_hash: config.config_hash,
+        source: assets.every(a => a.source === 'cache') ? 'cache' : 'live'
+    };
+}
+
+/**
+ * Fetch live content directly from the cloud API (bypass cache)
+ * Used for fast boot when cache is empty or playlist has changed.
+ * Returns playlist with full cloud URLs for immediate rendering.
+ */
+async function fetchLiveContent() {
+    const enrollment = getEnrollmentInfo();
+    if (!enrollment) return null;
+
+    const serverUrl = process.env.ODS_SERVER_URL || 'https://api.ods-cloud.com';
+    const token = process.env.ODS_DEVICE_TOKEN || 'system';
+
+    try {
+        // Fetch config directly from cloud
+        const config = await cache.fetchConfig(serverUrl, playerId, token, enrollment.device_uuid);
+
+        if (!config || !config.playlist || !config.playlist.assets) {
+            return null;
+        }
+
+        // Map assets with full cloud URLs for live rendering
+        const assets = config.playlist.assets.map(asset => {
+            const liveUrl = asset.url
+                ? (asset.url.startsWith('http') ? asset.url : `${serverUrl}${asset.url}`)
+                : null;
+            const localPath = cache.getCachedAssetPath(asset.id);
+            return {
+                id: asset.id,
+                type: asset.type,
+                filename: asset.filename,
+                url: asset.url || null,
+                liveUrl: liveUrl,
+                localPath: localPath,
+                duration: asset.duration || 10,
+                order: asset.order,
+                zone_id: asset.zone_id || 'main',
+                transition: asset.transition || 'fade',
+                available: asset.type === 'url' ? true : (liveUrl !== null || localPath !== null),
+                source: localPath ? 'cache' : 'live'
+            };
+        });
+
+        console.log(`[CloudSync] Live content fetched: ${assets.length} assets`);
+
+        return {
+            playlist_id: config.playlist.id,
+            playlist_name: config.playlist.name,
+            total_duration: config.playlist.total_duration,
+            assets: assets.filter(a => a.available),
+            layout: config.layout || { id: 'single', name: 'Single', orientation: 'landscape', screen_count: 1, zones: [{ id: 'main', label: '1', x: 0, y: 0, w: 100, h: 100 }] },
+            zones: config.playlist.zones || null,
+            config_hash: config.config_hash,
+            source: 'live'
+        };
+    } catch (error) {
+        console.error('[CloudSync] Failed to fetch live content:', error.message);
+        return null;
+    }
+}
+
+/**
+ * Check if the playlist has changed since last cache download
+ * Compares cached config_hash with server's hash (lightweight check)
+ * @returns {{ changed: boolean, cachedHash: string|null, serverHash: string|null, offline: boolean }}
+ */
+async function hasPlaylistChanged() {
+    const enrollment = getEnrollmentInfo();
+    if (!enrollment) return { changed: false, cachedHash: null, serverHash: null, offline: true };
+
+    const serverUrl = process.env.ODS_SERVER_URL || 'https://api.ods-cloud.com';
+    const token = process.env.ODS_DEVICE_TOKEN || 'system';
+
+    try {
+        const result = await cache.checkConfigHash(serverUrl, playerId, token, enrollment.device_uuid);
+        const cachedConfig = cache.getCachedConfig();
+        return {
+            changed: result.changed,
+            cachedHash: cachedConfig?.config_hash || null,
+            serverHash: result.serverHash,
+            offline: false
+        };
+    } catch (error) {
+        console.log('[CloudSync] Cannot check playlist hash (offline?):', error.message);
+        return { changed: false, cachedHash: null, serverHash: null, offline: true };
+    }
+}
+
+/**
+ * Check if all playlist assets are cached locally
+ * @returns {{ ready: boolean, total: number, cached: number }}
+ */
+function isCacheReady() {
+    const config = cache.getCachedConfig();
+    if (!config || !config.playlist || !config.playlist.assets) {
+        return { ready: false, total: 0, cached: 0 };
+    }
+
+    const assets = config.playlist.assets.filter(a => a.type !== 'url'); // URLs don't need caching
+    const total = assets.length;
+    const cached = assets.filter(a => cache.getCachedAssetPath(a.id) !== null).length;
+
+    return {
+        ready: total === 0 || cached >= total,
+        total,
+        cached
     };
 }
 
@@ -389,5 +507,8 @@ module.exports = {
     stop,
     doSync,
     getStatus,
-    getContentForRenderer
+    getContentForRenderer,
+    fetchLiveContent,
+    hasPlaylistChanged,
+    isCacheReady
 };

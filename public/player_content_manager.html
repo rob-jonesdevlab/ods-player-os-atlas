@@ -361,15 +361,24 @@
         }
 
         // ─── Content Fetch ───
+        let currentBootMode = null;
+        let cacheSwapped = false;  // Track if we've already swapped to cache
+
         async function fetchContent() {
             try {
                 const resp = await fetch('/api/player/content');
                 const data = await resp.json();
-                console.log('[Content] Fetched:', data);
+                console.log(`[Content] Fetched (bootMode: ${data.bootMode}):`, data);
+                currentBootMode = data.bootMode;
 
                 if (!data.hasContent || !data.playlist || data.playlist.assets.length === 0) {
-                    console.log('[Content] No content available — redirecting to status');
-                    window.location.href = '/player_status.html';
+                    console.log('[Content] No content available — showing loading state');
+                    document.getElementById('emptyState').classList.add('visible');
+                    // Retry in 5s instead of redirecting to player_status.html
+                    setTimeout(async () => {
+                        const retry = await fetchContent();
+                        if (retry) renderPlaylist(retry);
+                    }, 5000);
                     return null;
                 }
 
@@ -389,9 +398,12 @@
                 // Server might be restarting — start offline border but don't redirect
                 startOfflineBorder();
 
-                // If we have no content at all, go back to status
+                // Retry in 5s (no redirect to player_status.html)
                 if (!currentPlaylist) {
-                    setTimeout(() => { window.location.href = '/player_status.html'; }, 5000);
+                    setTimeout(async () => {
+                        const retry = await fetchContent();
+                        if (retry) renderPlaylist(retry);
+                    }, 5000);
                 }
                 return null;
             }
@@ -522,20 +534,25 @@
                 slide.className = 'slide' + (i === 0 ? ' active' : '');
                 slide.id = `slide-${zoneId}-${i}`;
 
+                // Determine best source: prefer local cache, fallback to live cloud URL
+                const assetSrc = asset.localPath || asset.liveUrl || `/cache/${asset.id}`;
+
                 if (asset.type === 'video') {
                     const video = document.createElement('video');
-                    video.src = asset.localPath || `/cache/${asset.id}`;
+                    video.src = assetSrc;
                     video.autoplay = (i === 0);
                     video.muted = true;
                     video.loop = false;
                     video.playsInline = true;
                     video.preload = 'auto';
+                    video.setAttribute('crossorigin', 'anonymous');
                     video.addEventListener('ended', () => nextSlideForZone(zoneId));
                     video.addEventListener('error', (e) => {
                         console.error(`[Video] Error loading ${asset.filename}:`, e);
                         nextSlideForZone(zoneId);
                     });
                     slide.appendChild(video);
+                    console.log(`[Content] ${asset.filename}: source=${asset.source || 'unknown'} src=${assetSrc.substring(0, 80)}`);
                 } else if (asset.type === 'url') {
                     const iframe = document.createElement('iframe');
                     const streamUrl = asset.url
@@ -550,13 +567,15 @@
                     slide.appendChild(iframe);
                 } else {
                     const img = document.createElement('img');
-                    img.src = asset.localPath || `/cache/${asset.id}`;
+                    img.src = assetSrc;
                     img.alt = asset.filename || '';
                     img.loading = (i < 2) ? 'eager' : 'lazy';
+                    img.setAttribute('crossorigin', 'anonymous');
                     img.addEventListener('error', (e) => {
                         console.error(`[Image] Error loading ${asset.filename}:`, e);
                     });
                     slide.appendChild(img);
+                    console.log(`[Content] ${asset.filename}: source=${asset.source || 'unknown'} src=${assetSrc.substring(0, 80)}`);
                 }
 
                 container.appendChild(slide);
@@ -754,17 +773,46 @@
 
         // ─── Init ───
         async function init() {
-            console.log('[ContentManager] Starting...');
+            console.log('[ContentManager] Starting (fast boot mode)...');
             applyTemplate(0);
+
+            // Show loading state initially
+            document.getElementById('emptyState').classList.add('visible');
 
             // Connect WebSocket for real-time deploy push
             connectWebSocket();
 
-            // Fetch and render content
+            // Fetch and render content (uses decision tree — cache or live)
             const playlist = await fetchContent();
             if (playlist) {
                 renderPlaylist(playlist);
             }
+
+            // Background cache polling — swap from live to cached when ready
+            const CACHE_POLL_INTERVAL = 30 * 1000;  // 30s
+            setInterval(async () => {
+                if (cacheSwapped) return;  // Already on cache, no need to poll
+
+                try {
+                    const resp = await fetch('/api/player/cache-ready');
+                    const status = await resp.json();
+                    console.log(`[CachePoll] Progress: ${status.cached}/${status.total} ready=${status.ready}`);
+
+                    if (status.ready && !cacheSwapped) {
+                        console.log('[CachePoll] ✅ Cache complete — swapping to cached content');
+                        cacheSwapped = true;
+
+                        // Re-fetch content (server will now return cached paths)
+                        const freshPlaylist = await fetchContent();
+                        if (freshPlaylist) {
+                            renderPlaylist(freshPlaylist);
+                            console.log('[CachePoll] 🔄 Swapped to cached content successfully');
+                        }
+                    }
+                } catch (e) {
+                    // Non-blocking — cache not ready yet, continue with live
+                }
+            }, CACHE_POLL_INTERVAL);
         }
 
         init();
