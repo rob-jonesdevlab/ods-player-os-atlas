@@ -273,10 +273,23 @@ npm start
 
 ### Deploy Changes to Device
 
+> **Always use `sshpass` for SSH/SCP** to provide passwords inline. Never rely on interactive password prompts.
+
 ```bash
-scp public/*.html root@10.111.123.102:/home/signage/ODS/public/
-scp server.js root@10.111.123.102:/home/signage/ODS/
-ssh root@10.111.123.102 'systemctl restart ods-webserver'
+# Deploy HTML files
+sshpass -p '0D5@dm!n' scp -o StrictHostKeyChecking=no public/*.html root@10.111.123.102:/home/signage/ODS/public/
+
+# Deploy server
+sshpass -p '0D5@dm!n' scp -o StrictHostKeyChecking=no server.js root@10.111.123.102:/home/signage/ODS/
+
+# Deploy player modules
+sshpass -p '0D5@dm!n' scp -o StrictHostKeyChecking=no player/*.js root@10.111.123.102:/home/signage/ODS/player/
+
+# Deploy boot script (lives at /usr/local/bin/ on device, not /home/signage/ODS/scripts/)
+sshpass -p '0D5@dm!n' scp -o StrictHostKeyChecking=no scripts/start-player-ATLAS.sh root@10.111.123.102:/usr/local/bin/
+
+# Restart webserver
+sshpass -p '0D5@dm!n' ssh -o StrictHostKeyChecking=no root@10.111.123.102 'systemctl restart ods-webserver'
 ```
 
 ### Troubleshooting

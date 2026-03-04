@@ -304,6 +304,8 @@ Splash assets are 4K source. The boot wrapper detects resolution via `xrandr` an
 ### Credentials
 Device credentials are in `scripts/atlas_secrets.conf` (root: `0D5@dm!n`). Build server (jdl-mini-box) password: `mnbvcxz!!!`. Always check project docs before SSH attempts.
 
+> **⚠️ Always use `sshpass`** for SSH/SCP connections. Never rely on interactive password prompts or stdin follow-up. Example: `sshpass -p '0D5@dm!n' ssh -o StrictHostKeyChecking=no root@10.111.123.102 'command'`
+
 ### WiFi AP Setup (Phone Config)
 hostapd runs in AP mode on wlan0 with `country_code=US`, `ieee80211n=1`, channel 6, hidden SSID. AP start kills `wpa_supplicant` first (it fights hostapd for wlan0). WiFi scan endpoint guarded with `pgrep -x hostapd` to prevent disrupting AP mode. dnsmasq uses `except-interface=end0` (Pi5 Armbian ethernet name).
 
@@ -320,27 +322,34 @@ The dev device and jdl-mini-box are behind NAT on the lab network (`10.111.123.x
 
 **Chain:** Mac → ods-relay-server (134.199.136.112:22) → jdl-mini-box (localhost:2222) → device (10.111.123.102)
 
-**Step-by-step deployment (validated 2026-03-02):**
+**Local network deployment (preferred — use when on same network as device):**
+
+```bash
+# Deploy files directly with sshpass (no interactive prompts)
+sshpass -p '0D5@dm!n' scp -o StrictHostKeyChecking=no file.js root@10.111.123.102:/home/signage/ODS/
+sshpass -p '0D5@dm!n' ssh -o StrictHostKeyChecking=no root@10.111.123.102 'systemctl restart ods-webserver'
+```
+
+**Remote deployment via relay (only when outside the lab network):**
 
 ```bash
 # 1. Copy file to relay server
 scp -i ~/.ssh/id_ed25519_ods_relay_dod file.js root@134.199.136.112:/tmp/
 
-# 2. SSH to relay (interactive — needed for password prompts)
+# 2. SSH to relay
 ssh -i ~/.ssh/id_ed25519_ods_relay_dod root@134.199.136.112
 
-# 3. From relay, SSH to jdl-mini-box via reverse tunnel
-ssh -o StrictHostKeyChecking=no -p 2222 jones-dev-lab@localhost
-# Password: mnbvcxz!!!
+# 3. From relay, SCP file to jdl-mini-box via reverse tunnel (use sshpass)
+sshpass -p 'mnbvcxz!!!' scp -o StrictHostKeyChecking=no -P 2222 /tmp/file.js jones-dev-lab@localhost:/tmp/
 
-# 4. From relay, SCP file to jdl-mini-box
-scp -o StrictHostKeyChecking=no -P 2222 /tmp/file.js jones-dev-lab@localhost:/tmp/
+# 4. From relay, SSH to jdl-mini-box
+sshpass -p 'mnbvcxz!!!' ssh -o StrictHostKeyChecking=no -p 2222 jones-dev-lab@localhost
 
-# 5. From jdl-mini-box, SCP to device
-scp -o StrictHostKeyChecking=no /tmp/file.js root@10.111.123.102:/home/signage/ODS/player/
+# 5. From jdl-mini-box, SCP to device (use sshpass)
+sshpass -p '0D5@dm!n' scp -o StrictHostKeyChecking=no /tmp/file.js root@10.111.123.102:/home/signage/ODS/player/
 
 # 6. From jdl-mini-box, restart webserver on device
-ssh -o StrictHostKeyChecking=no root@10.111.123.102 "systemctl restart ods-webserver"
+sshpass -p '0D5@dm!n' ssh -o StrictHostKeyChecking=no root@10.111.123.102 'systemctl restart ods-webserver'
 ```
 
 > **Critical:** The relay has NO private keys — cannot initiate SSH from relay → jdl-mini-box without password auth. The reverse tunnel (`-R 2222:localhost:22`) is initiated BY jdl-mini-box, not the relay. Use `jones-dev-lab` user with password `mnbvcxz!!!` for the port-2222 hop.
