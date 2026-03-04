@@ -180,6 +180,51 @@ app.get('/api/display/modes', (req, res) => {
     });
 });
 
+// Get connected monitors info from xrandr
+app.get('/api/display/monitors', (req, res) => {
+    exec("DISPLAY=:0 xrandr --query 2>/dev/null", { timeout: 5000 }, (error, stdout) => {
+        if (error || !stdout) {
+            return res.json({ monitors: [], count: 0 });
+        }
+
+        const monitors = [];
+        const lines = stdout.split('\n');
+        let currentMonitor = null;
+
+        lines.forEach(line => {
+            // Match connected/disconnected outputs
+            const outputMatch = line.match(/^(\S+)\s+(connected|disconnected)\s*(primary)?\s*(\d+x\d+\+\d+\+\d+)?\s*(.*)/);
+            if (outputMatch) {
+                if (currentMonitor) monitors.push(currentMonitor);
+                const [, name, status, primary, geometry] = outputMatch;
+                currentMonitor = {
+                    name,
+                    connected: status === 'connected',
+                    primary: !!primary,
+                    geometry: geometry || null,
+                    resolution: geometry ? geometry.split('+')[0] : null,
+                    position: geometry ? { x: parseInt(geometry.split('+')[1]), y: parseInt(geometry.split('+')[2]) } : null,
+                    modes: [],
+                    currentMode: null
+                };
+            } else if (currentMonitor && line.match(/^\s+\d+x\d+/)) {
+                // Mode line
+                const modeMatch = line.match(/^\s+(\d+x\d+)\s+([\d.]+)(\*)?(\+)?/);
+                if (modeMatch) {
+                    const mode = { resolution: modeMatch[1], refresh: parseFloat(modeMatch[2]), current: !!modeMatch[3], preferred: !!modeMatch[4] };
+                    currentMonitor.modes.push(mode);
+                    if (mode.current) currentMonitor.currentMode = mode;
+                }
+            }
+        });
+        if (currentMonitor) monitors.push(currentMonitor);
+
+        // Only return connected monitors
+        const connected = monitors.filter(m => m.connected);
+        res.json({ monitors: connected, count: connected.length });
+    });
+});
+
 // WiFi connection state — polled by network_setup.html for status pill updates
 let wifiConnectionState = { stage: 'idle', message: '', ssid: '', ip: '' };
 

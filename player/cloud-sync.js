@@ -344,7 +344,7 @@ function getStatus() {
 
 /**
  * Get current playlist content for the renderer
- * Returns cached config's playlist with local file paths
+ * Returns cached config's playlist with local file paths + zone layout data
  */
 function getContentForRenderer() {
     const config = cache.getCachedConfig();
@@ -363,6 +363,8 @@ function getContentForRenderer() {
             localPath: localPath,
             duration: asset.duration || 10,
             order: asset.order,
+            zone_id: asset.zone_id || 'main',
+            transition: asset.transition || 'fade',
             available: asset.type === 'url' ? true : localPath !== null
         };
     });
@@ -372,6 +374,8 @@ function getContentForRenderer() {
         playlist_name: config.playlist.name,
         total_duration: config.playlist.total_duration,
         assets: assets.filter(a => a.available),
+        layout: config.layout || { id: 'single', name: 'Single', orientation: 'landscape', screen_count: 1, zones: [{ id: 'main', label: '1', x: 0, y: 0, w: 100, h: 100 }] },
+        zones: config.playlist.zones || null,
         config_hash: config.config_hash
     };
 }

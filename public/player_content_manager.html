@@ -30,6 +30,13 @@
             z-index: 1;
         }
 
+        /* ─── Zone Container (multi-zone layouts) ─── */
+        .zone-container {
+            position: absolute;
+            overflow: hidden;
+            background: #000;
+        }
+
         .slide {
             position: absolute;
             inset: 0;
@@ -390,44 +397,97 @@
             }
         }
 
-        // ─── Slideshow Renderer ───
+        // ─── Slideshow Renderer (zone-aware) ───
+        // Per-zone state tracking for independent slideshows
+        const zoneState = {};  // { zoneId: { assets: [], currentIndex: 0, timer: null } }
+
         function renderPlaylist(playlist) {
             const container = document.getElementById('slideshow');
             const empty = document.getElementById('emptyState');
 
-            assets = playlist.assets.sort((a, b) => (a.order || 0) - (b.order || 0));
+            // Check for multi-zone layout
+            const layout = playlist.layout;
+            const zoneData = playlist.zones;  // { zoneId: [assets...] }
+            const allAssets = playlist.assets.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-            if (assets.length === 0) {
+            if (allAssets.length === 0) {
                 empty.classList.add('visible');
                 return;
             }
-
             empty.classList.remove('visible');
-            container.innerHTML = '';
 
-            assets.forEach((asset, i) => {
+            // Clear existing content and zone state
+            container.innerHTML = '';
+            Object.keys(zoneState).forEach(zid => clearTimeout(zoneState[zid]?.timer));
+
+            const zones = layout?.zones || [{ id: 'main', label: '1', x: 0, y: 0, w: 100, h: 100 }];
+            const isMultiZone = zones.length > 1;
+
+            if (!isMultiZone) {
+                // Single zone — original flat slideshow behavior
+                assets = allAssets;
+                renderZoneSlides(container, assets, 'main');
+                currentSlideIndex = 0;
+                startSlideTimerForZone('main');
+                console.log(`[Content] Rendering ${assets.length} assets (single zone)`);
+            } else {
+                // Multi-zone — create positioned containers per zone
+                zones.forEach(zone => {
+                    const zoneEl = document.createElement('div');
+                    zoneEl.className = 'zone-container';
+                    zoneEl.id = `zone-${zone.id}`;
+                    zoneEl.style.left = `${zone.x}%`;
+                    zoneEl.style.top = `${zone.y}%`;
+                    zoneEl.style.width = `${zone.w}%`;
+                    zoneEl.style.height = `${zone.h}%`;
+                    container.appendChild(zoneEl);
+
+                    // Get assets for this zone
+                    let zoneAssets;
+                    if (zoneData && zoneData[zone.id]) {
+                        zoneAssets = zoneData[zone.id].sort((a, b) => (a.order || 0) - (b.order || 0));
+                        // Map to local paths
+                        zoneAssets = zoneAssets.map(a => {
+                            const match = allAssets.find(aa => aa.id === a.id);
+                            return match || a;
+                        });
+                    } else {
+                        zoneAssets = allAssets.filter(a => a.zone_id === zone.id);
+                    }
+
+                    if (zoneAssets.length > 0) {
+                        renderZoneSlides(zoneEl, zoneAssets, zone.id);
+                        startSlideTimerForZone(zone.id);
+                    }
+                });
+                console.log(`[Content] Rendering ${allAssets.length} assets across ${zones.length} zones`);
+            }
+        }
+
+        function renderZoneSlides(container, zoneAssets, zoneId) {
+            zoneState[zoneId] = { assets: zoneAssets, currentIndex: 0, timer: null };
+
+            zoneAssets.forEach((asset, i) => {
                 const slide = document.createElement('div');
                 slide.className = 'slide' + (i === 0 ? ' active' : '');
-                slide.id = `slide-${i}`;
+                slide.id = `slide-${zoneId}-${i}`;
 
                 if (asset.type === 'video') {
                     const video = document.createElement('video');
-                    video.src = `/cache/${asset.id}`;
+                    video.src = asset.localPath || `/cache/${asset.id}`;
                     video.autoplay = (i === 0);
                     video.muted = true;
                     video.loop = false;
                     video.playsInline = true;
                     video.preload = 'auto';
-                    video.addEventListener('ended', () => nextSlide());
+                    video.addEventListener('ended', () => nextSlideForZone(zoneId));
                     video.addEventListener('error', (e) => {
                         console.error(`[Video] Error loading ${asset.filename}:`, e);
-                        nextSlide();
+                        nextSlideForZone(zoneId);
                     });
                     slide.appendChild(video);
                 } else if (asset.type === 'url') {
-                    // URL content — render in iframe
                     const iframe = document.createElement('iframe');
-                    // Use the cloud API stream URL which redirects to the actual webpage
                     const streamUrl = asset.url
                         ? (asset.url.startsWith('http') ? asset.url : `${API_URL}${asset.url}`)
                         : `/cache/${asset.id}`;
@@ -439,9 +499,8 @@
                     });
                     slide.appendChild(iframe);
                 } else {
-                    // Image (default)
                     const img = document.createElement('img');
-                    img.src = `/cache/${asset.id}`;
+                    img.src = asset.localPath || `/cache/${asset.id}`;
                     img.alt = asset.filename || '';
                     img.loading = (i < 2) ? 'eager' : 'lazy';
                     img.addEventListener('error', (e) => {
@@ -452,58 +511,63 @@
 
                 container.appendChild(slide);
             });
-
-            // Start slideshow
-            currentSlideIndex = 0;
-            startSlideTimer();
-            console.log(`[Content] Rendering ${assets.length} assets`);
         }
 
-        function startSlideTimer() {
-            clearTimeout(slideTimer);
+        function startSlideTimerForZone(zoneId) {
+            const state = zoneState[zoneId];
+            if (!state || state.assets.length === 0) return;
+            clearTimeout(state.timer);
 
-            const asset = assets[currentSlideIndex];
+            const asset = state.assets[state.currentIndex];
             if (!asset) return;
 
-            const slide = document.getElementById(`slide-${currentSlideIndex}`);
+            const slide = document.getElementById(`slide-${zoneId}-${state.currentIndex}`);
             const video = slide?.querySelector('video');
 
             // For videos, let the 'ended' event handle transition
             if (asset.type === 'video' && video) {
                 video.currentTime = 0;
                 video.play().catch(e => console.warn('[Video] Autoplay blocked:', e));
-                // Progress bar for video
-                const updateVideoProgress = () => {
-                    if (video.duration) {
-                        const pct = (video.currentTime / video.duration) * 100;
-                        document.getElementById('slideProgress').style.width = `${pct}%`;
-                    }
-                    if (!video.ended) requestAnimationFrame(updateVideoProgress);
-                };
-                requestAnimationFrame(updateVideoProgress);
+                // Progress bar only for single zone (main)
+                if (zoneId === 'main') {
+                    const updateVideoProgress = () => {
+                        if (video.duration) {
+                            const pct = (video.currentTime / video.duration) * 100;
+                            document.getElementById('slideProgress').style.width = `${pct}%`;
+                        }
+                        if (!video.ended) requestAnimationFrame(updateVideoProgress);
+                    };
+                    requestAnimationFrame(updateVideoProgress);
+                }
                 return;
             }
 
             // For images, use duration timer
             const duration = (asset.duration || 10) * 1000;
-            const progressBar = document.getElementById('slideProgress');
-            progressBar.style.transition = 'none';
-            progressBar.style.width = '0%';
 
-            requestAnimationFrame(() => {
-                progressBar.style.transition = `width ${duration}ms linear`;
-                progressBar.style.width = '100%';
-            });
+            // Progress bar only for single zone
+            if (zoneId === 'main' && Object.keys(zoneState).length === 1) {
+                const progressBar = document.getElementById('slideProgress');
+                progressBar.style.transition = 'none';
+                progressBar.style.width = '0%';
+                requestAnimationFrame(() => {
+                    progressBar.style.transition = `width ${duration}ms linear`;
+                    progressBar.style.width = '100%';
+                });
+            }
 
-            slideTimer = setTimeout(() => nextSlide(), duration);
+            state.timer = setTimeout(() => nextSlideForZone(zoneId), duration);
         }
 
-        function nextSlide() {
-            const prevIndex = currentSlideIndex;
-            currentSlideIndex = (currentSlideIndex + 1) % assets.length;
+        function nextSlideForZone(zoneId) {
+            const state = zoneState[zoneId];
+            if (!state || state.assets.length === 0) return;
+
+            const prevIndex = state.currentIndex;
+            state.currentIndex = (state.currentIndex + 1) % state.assets.length;
 
             // Pause previous video
-            const prevSlide = document.getElementById(`slide-${prevIndex}`);
+            const prevSlide = document.getElementById(`slide-${zoneId}-${prevIndex}`);
             const prevVideo = prevSlide?.querySelector('video');
             if (prevVideo) prevVideo.pause();
 
@@ -511,15 +575,19 @@
             prevSlide?.classList.remove('active');
             prevSlide?.classList.add('outgoing');
 
-            const nextSlideEl = document.getElementById(`slide-${currentSlideIndex}`);
+            const nextSlideEl = document.getElementById(`slide-${zoneId}-${state.currentIndex}`);
             nextSlideEl?.classList.add('active');
 
             setTimeout(() => {
                 prevSlide?.classList.remove('outgoing');
             }, 1200);
 
-            startSlideTimer();
+            startSlideTimerForZone(zoneId);
         }
+
+        // Legacy aliases for backward compatibility
+        function startSlideTimer() { startSlideTimerForZone('main'); }
+        function nextSlide() { nextSlideForZone('main'); }
 
         // ─── Content Polling ───
         setInterval(async () => {
