@@ -887,22 +887,37 @@ NUM_SCREENS=$(jq -r '.windows | length' "$CONFIG_FILE")
 
 echo "[DISPLAY] Mode: $CURRENT_MODE, Orientation: $ORIENTATION, Screens: $NUM_SCREENS"
 
+# Helper: get actual width of HDMI-1 after applying mode
+get_hdmi1_width() {
+    local w=$(xrandr 2>/dev/null | grep '^HDMI-1' | grep -oP '\d+x\d+\+' | head -1 | cut -dx -f1)
+    echo "${w:-1920}"
+}
+
 # Apply xrandr based on config
+# NOTE: Uses --preferred (native res) + explicit --pos to prevent the
+# gap bug where --right-of calculates position from fb0 virtual_size
+# instead of actual output resolution.
 case "$ORIENTATION" in
     portrait)
-        xrandr --output HDMI-1 --mode 1920x1080 --rotate left 2>/dev/null || true
+        xrandr --output HDMI-1 --preferred --rotate left --pos 0x0 2>/dev/null || \
+          xrandr --output HDMI-1 --mode 1920x1080 --rotate left --pos 0x0 2>/dev/null || true
         if [ "$NUM_SCREENS" -ge 2 ]; then
-            xrandr --output HDMI-2 --mode 1920x1080 --rotate left --right-of HDMI-1 2>/dev/null || true
+            HDMI1_W=$(get_hdmi1_width)
+            xrandr --output HDMI-2 --preferred --rotate left --pos ${HDMI1_W}x0 2>/dev/null || \
+              xrandr --output HDMI-2 --mode 1920x1080 --rotate left --pos ${HDMI1_W}x0 2>/dev/null || true
         fi
         ;;
     landscape|*)
-        xrandr --output HDMI-1 --mode 1920x1080 --rotate normal 2>/dev/null || true
+        xrandr --output HDMI-1 --preferred --rotate normal --pos 0x0 2>/dev/null || \
+          xrandr --output HDMI-1 --mode 1920x1080 --rotate normal --pos 0x0 2>/dev/null || true
         if [ "$NUM_SCREENS" -ge 2 ]; then
-            xrandr --output HDMI-2 --mode 1920x1080 --rotate normal --right-of HDMI-1 2>/dev/null || true
+            HDMI1_W=$(get_hdmi1_width)
+            xrandr --output HDMI-2 --preferred --rotate normal --pos ${HDMI1_W}x0 2>/dev/null || \
+              xrandr --output HDMI-2 --mode 1920x1080 --rotate normal --pos ${HDMI1_W}x0 2>/dev/null || true
         fi
         ;;
 esac
-echo "[DISPLAY] xrandr configuration applied"
+echo "[DISPLAY] xrandr configuration applied (HDMI-1 at 0x0, HDMI-2 at ${HDMI1_W:-n/a}x0)"
 SCRIPT
     chmod +x /usr/local/bin/ods-display-config.sh
 
@@ -998,18 +1013,31 @@ LJSON
 # ─── Step 7: Install Plymouth ODS Theme ────────────────────────────────────
 
 deploy_plymouth() {
-    log "🎨 Step 7: Installing Plymouth ODS theme (v8-2-0-FLASH 4K premium splash)..."
+    log "🎨 Step 7: Installing Plymouth ODS theme (multi-resolution splash)..."
 
     local THEME_DIR="/usr/share/plymouth/themes/ods"
-    local REPO_ASSETS="/tmp/atlas_repo/brand/splash/generated"
+    local SPLASH_BASE="/tmp/atlas_repo/brand/splash"
 
     # Create theme directory
     mkdir -p "$THEME_DIR"
 
-    # ── Copy ALL pre-generated splash assets from repo ────────────────────
-    # Single source of truth: brand/splash/generated/
-    # Contains: throbbers, watermark, splash animations, FBI bridge frames,
-    #           overlay frames, enrollment frames, Plymouth config
+    # ── Auto-detect resolution tier from framebuffer ──────────────────────
+    # Read fb0 virtual_size (set by DRM at boot) to select correct tier:
+    #   4K (3840+): generated_4K
+    #   2K (2560+): generated_2K
+    #   HD (default): generated_HD
+    local FB_W=$(cut -d, -f1 /sys/class/graphics/fb0/virtual_size 2>/dev/null || echo "1920")
+    local RES_TIER="HD"
+    if [ "$FB_W" -ge 3000 ] 2>/dev/null; then
+        RES_TIER="4K"
+    elif [ "$FB_W" -ge 2000 ] 2>/dev/null; then
+        RES_TIER="2K"
+    fi
+    log "  → Framebuffer width: ${FB_W}px → Resolution tier: ${RES_TIER}"
+
+    local REPO_ASSETS="${SPLASH_BASE}/generated_${RES_TIER}"
+
+    # ── Copy pre-generated splash assets from resolution-matched tier ─────
     if [ -d "$REPO_ASSETS" ]; then
         cp "$REPO_ASSETS"/*.png "$THEME_DIR/" 2>/dev/null || true
         cp "$REPO_ASSETS"/*.plymouth "$THEME_DIR/" 2>/dev/null || true
@@ -1017,10 +1045,23 @@ deploy_plymouth() {
         cp "$REPO_ASSETS"/*.raw "$THEME_DIR/" 2>/dev/null || true
         local png_count=$(ls "$THEME_DIR"/*.png 2>/dev/null | wc -l)
         local raw_count=$(ls "$THEME_DIR"/*.raw 2>/dev/null | wc -l)
-        log "  ✅ $png_count PNGs + $raw_count pre-built RAWs copied from brand/splash/generated/"
+        log "  ✅ $png_count PNGs + $raw_count pre-built RAWs copied from generated_${RES_TIER}/"
     else
-        log "  ⚠️  Splash assets not found at $REPO_ASSETS"
+        # Fallback: try legacy generated/ directory
+        local LEGACY="${SPLASH_BASE}/generated"
+        if [ -d "$LEGACY" ]; then
+            cp "$LEGACY"/*.png "$THEME_DIR/" 2>/dev/null || true
+            cp "$LEGACY"/*.plymouth "$THEME_DIR/" 2>/dev/null || true
+            cp "$LEGACY"/*.raw "$THEME_DIR/" 2>/dev/null || true
+            log "  ✅ Assets copied from legacy generated/ (no tier match for ${RES_TIER})"
+        else
+            log "  ⚠️  Splash assets not found at $REPO_ASSETS or legacy path"
+        fi
     fi
+
+    # Save detected tier for boot wrapper to use
+    echo "$RES_TIER" > /etc/ods/resolution_tier
+    log "  ✅ Resolution tier saved to /etc/ods/resolution_tier"
 
     # ── Convert framebuffer PNGs to RGB565 raw ────────────────────────────
     # The FBI bridge and enrollment animations write raw RGB565 to /dev/fb0.

@@ -70,9 +70,16 @@ log "Xorg ready — fbi animation stopped"
 XORG_RES=$(DISPLAY=:0 xrandr 2>/dev/null | grep '*' | head -1 | awk '{print $1}' || echo "unknown")
 log "Xorg display: ${XORG_RES} (DRM modesetting driver)"
 
-# Paint splash on root window immediately
-DISPLAY=:0 display -window root "$SPLASH_IMG" 2>/dev/null
-log "Root window splash painted"
+# Paint splash on root window — scale to actual virtual desktop size
+# (source PNG may be 3840x2160 but display could be 1920x1080 dual=3840x1080)
+VIRTUAL_SIZE=$(DISPLAY=:0 xdpyinfo 2>/dev/null | grep dimensions | awk '{print $2}' || echo "3840x2160")
+if command -v convert &>/dev/null; then
+    convert "$SPLASH_IMG" -resize "${VIRTUAL_SIZE}!" /tmp/splash_root.png 2>/dev/null
+    DISPLAY=:0 display -window root /tmp/splash_root.png 2>/dev/null
+else
+    DISPLAY=:0 display -window root "$SPLASH_IMG" 2>/dev/null
+fi
+log "Root window splash painted (scaled to ${VIRTUAL_SIZE})"
 
 # ── STAGE 4: "Starting ODS services" ANIMATION (1.5s) ────────────────
 for _f in 1 2 3 4 5; do
@@ -90,6 +97,14 @@ unclutter -idle 0.01 -root &
 sleep 0.5
 /usr/local/bin/ods-display-config.sh 2>/dev/null || true
 log "Openbox started"
+
+# Re-paint root window at corrected virtual size (display-config may have changed layout)
+VIRTUAL_SIZE=$(DISPLAY=:0 xdpyinfo 2>/dev/null | grep dimensions | awk '{print $2}' || echo "$VIRTUAL_SIZE")
+if command -v convert &>/dev/null; then
+    convert "$SPLASH_IMG" -resize "${VIRTUAL_SIZE}!" /tmp/splash_root.png 2>/dev/null
+    DISPLAY=:0 display -window root /tmp/splash_root.png 2>/dev/null
+    log "Root window repainted after display config (${VIRTUAL_SIZE})"
+fi
 
 SCREEN_W=$(xrandr 2>/dev/null | grep '*' | head -1 | awk '{print $1}' | cut -dx -f1)
 [ -z "$SCREEN_W" ] || [ "$SCREEN_W" -eq 0 ] 2>/dev/null && SCREEN_W=1920
@@ -117,9 +132,13 @@ log "Config complete"
 rm -f /tmp/ods-loader-ready
 
 # Pre-resize first frame to actual screen resolution, then display
-# (4K PNGs must be resized when display runs at 1080p or 2K)
-log "Overlay: creating ${SCREEN_FULL:-3840x2160} overlay from 4K frame"
-convert "$ANIM_DIR/overlay_launch_1.png" -resize "${SCREEN_FULL:-3840x2160}!" /tmp/overlay_resized.png 2>/dev/null
+log "Overlay: creating ${SCREEN_FULL:-3840x2160} overlay"
+if [ -f "$ANIM_DIR/overlay_launch_1.png" ]; then
+    convert "$ANIM_DIR/overlay_launch_1.png" -resize "${SCREEN_FULL:-3840x2160}!" /tmp/overlay_resized.png 2>/dev/null
+else
+    # Create a black frame if overlay isn't available
+    convert -size "${SCREEN_FULL:-3840x2160}" xc:black /tmp/overlay_resized.png 2>/dev/null
+fi
 DISPLAY=:0 display -immutable -title BOOT_OVERLAY \
   -geometry ${SCREEN_FULL:-3840x2160}+0+0 \
   /tmp/overlay_resized.png 2>/dev/null &
