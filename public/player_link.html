@@ -600,7 +600,14 @@
             return uuid;
         }
 
-        function getCpuSerial() {
+        async function getCpuSerial() {
+            // Fetch real CPU serial from local player server
+            try {
+                const res = await fetch('/api/system/info');
+                const info = await res.json();
+                if (info.cpu_serial && info.cpu_serial !== '—') return info.cpu_serial;
+            } catch (e) { /* local server not ready yet */ }
+            // Fallback: random placeholder (will be corrected by cloud-sync register)
             let s = localStorage.getItem('ods_cpu_serial');
             if (!s) { s = 'CPU' + Math.random().toString(36).substring(2, 15); localStorage.setItem('ods_cpu_serial', s); }
             return s;
@@ -672,7 +679,7 @@
             try {
                 if (isInCooldown()) { showCooldown(); return; }
                 deviceUuid = getDeviceUuid();
-                const cpuSerial = getCpuSerial();
+                const cpuSerial = await getCpuSerial();
                 updateStatus('#f59e0b', 'Initializing...', '', true);
 
                 // Stage 1: Registering device (teal)

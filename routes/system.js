@@ -20,6 +20,7 @@ router.get('/info', (req, res) => {
     const info = {};
     const commands = {
         hostname: 'hostname',
+        cpu_serial: "cat /proc/cpuinfo | grep Serial | awk '{print $3}'",
         cpu_temp: "cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null",
         uptime: 'uptime -p',
         uptime_seconds: "awk '{print int($1)}' /proc/uptime 2>/dev/null || echo 0",
@@ -63,6 +64,7 @@ router.get('/info', (req, res) => {
             if (completed === total) {
                 res.json({
                     hostname: info.hostname,
+                    cpu_serial: info.cpu_serial && info.cpu_serial !== '—' ? info.cpu_serial : null,
                     device_name: info.device_name || info.hostname,
                     cpu_temp: info.cpu_temp,
                     uptime: info.uptime,
