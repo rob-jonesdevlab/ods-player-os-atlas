@@ -46,7 +46,6 @@ CHROME_FLAGS=(
   --disable-component-update
   --check-for-update-interval=31536000
   --autoplay-policy=no-user-gesture-required
-  --force-device-scale-factor=${ODS_SCALE:-1}
   --password-store=basic
   --credentials-enable-service=false
   --disable-save-password-bubble
@@ -57,9 +56,11 @@ CHROME_FLAGS=(
 )
 
 # Launch primary Chromium (screen 0)
+# ODS_SCALE is set by the boot wrapper based on primary display width
 chromium --app="$START_URL" \
   --start-maximized \
   --remote-debugging-port=9222 \
+  --force-device-scale-factor=${ODS_SCALE:-1} \
   "${CHROME_FLAGS[@]}" &
 
 PRIMARY_PID=$!
@@ -88,7 +89,16 @@ if [ "$DISPLAY_COUNT" -ge 2 ] && [ -f "$ENROLLMENT_FLAG" ]; then
 
     SCREEN1_URL="http://localhost:8080/player_watermark.html?screen=1"
 
-    echo "[ODS] Dual display mode — launching second Chromium at offset ${PRIMARY_WIDTH}x0 (${SECONDARY_W}x${SECONDARY_H})"
+    # Calculate scale factor for secondary display (independent of primary)
+    if [ "$SECONDARY_W" -ge 3000 ] 2>/dev/null; then
+        SCREEN1_SCALE=2
+    elif [ "$SECONDARY_W" -ge 2000 ] 2>/dev/null; then
+        SCREEN1_SCALE=1.5
+    else
+        SCREEN1_SCALE=1
+    fi
+
+    echo "[ODS] Dual display mode — launching second Chromium at offset ${PRIMARY_WIDTH}x0 (${SECONDARY_W}x${SECONDARY_H}, scale=${SCREEN1_SCALE})"
 
     # Launch Screen 1 Chromium
     # NOTE: --start-maximized is NOT used — Openbox's <maximized>yes</maximized>
@@ -100,6 +110,7 @@ if [ "$DISPLAY_COUNT" -ge 2 ] && [ -f "$ENROLLMENT_FLAG" ]; then
           --window-position=${PRIMARY_WIDTH},0 \
           --window-size=${SECONDARY_W},${SECONDARY_H} \
           --remote-debugging-port=9223 \
+          --force-device-scale-factor=${SCREEN1_SCALE} \
           "${CHROME_FLAGS[@]}" &
         SECONDARY_PID=$!
         echo "[ODS] Screen 1 Chromium launched (PID: $SECONDARY_PID)"
