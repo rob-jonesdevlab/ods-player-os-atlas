@@ -114,10 +114,13 @@ if [ "$DISPLAY_COUNT" -ge 2 ] && [ -f "$ENROLLMENT_FLAG" ]; then
         fi
     }
 
-    launch_screen1
-
-    # Screen 1 respawn loop (background)
+    # Screen 1 launch + respawn loop (background)
+    # IMPORTANT: launch_screen1 MUST be called inside this subshell so that
+    # 'wait' can track the Chromium PID (wait can only see child processes
+    # of the current shell). Calling it in the parent then waiting in a
+    # subshell causes an immediate return → crash loop.
     (
+        launch_screen1
         while true; do
             wait $SECONDARY_PID 2>/dev/null
             echo "[ODS] WARN: Screen 1 Chromium exited — respawning in 2s..."
