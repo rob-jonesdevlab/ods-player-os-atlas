@@ -1000,6 +1000,10 @@
 
         // ─── Init ───
         async function init() {
+            // Signal boot wrapper that page is ready — dismisses the overlay
+            fetch('/api/loader-ready').catch(() => { });
+            console.log('[PlayerStatus] Loader-ready signal sent');
+
             document.body.classList.add('ready', 'locked');
             setStatus('syncing', 'connecting');
             applyTemplate(0);
