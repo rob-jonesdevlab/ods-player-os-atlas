@@ -8,6 +8,19 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/boot_$(date +%Y%m%d_%H%M%S).log"
 log() { echo "$(date '+%Y-%m-%d %H:%M:%S.%3N') [WRAPPER] $1" | tee -a "$LOG_FILE"; }
 
+# Visual snapshot helper — captures root window screenshot at each transition
+SNAP_DIR="$LOG_DIR/snapshots_$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$SNAP_DIR"
+SNAP_N=0
+snap() {
+    SNAP_N=$((SNAP_N + 1))
+    local label="$1"
+    local fname=$(printf "%02d_%s" "$SNAP_N" "$label")
+    DISPLAY=:0 import -window root "$SNAP_DIR/${fname}.png" 2>/dev/null &
+    local geom=$(DISPLAY=:0 xdpyinfo 2>/dev/null | grep 'dimensions:' | awk '{print $2}' || echo "?")
+    log "[SNAP] #${SNAP_N} '${label}' captured (root geom: ${geom})"
+}
+
 SPLASH_IMG="/usr/share/plymouth/themes/ods/watermark.png"
 ANIM_DIR="/usr/share/plymouth/themes/ods"
 
@@ -67,17 +80,21 @@ xhost +local: 2>/dev/null || true
 touch "$STOP_FBI"
 kill $FBI_ANIM_PID 2>/dev/null || true
 log "Xorg ready — fbi animation stopped"
-# ── DIAGNOSTIC: Xorg initial state ──
+
+# Paint full-screen splash on root IMMEDIATELY — no delay between FBI kill and splash!
+# NOTE: Do NOT use watermark.png here — it's 549x72 and ImageMagick tiles small
+# images across the root window, causing a visible flash. Use splash_ods_1.png (1920x1080).
+DISPLAY=:0 xsetroot -solid black 2>/dev/null || true
+snap "after_fbi_kill_xsetroot"
+DISPLAY=:0 display -window root "$ANIM_DIR/splash_ods_1.png" 2>/dev/null
+snap "after_splash_paint"
+XORG_RES=$(DISPLAY=:0 xrandr 2>/dev/null | grep '*' | head -1 | awk '{print $1}' || echo "unknown")
+log "Root window splash painted (${XORG_RES} root, splash=$ANIM_DIR/splash_ods_1.png)"
+
+# ── DIAGNOSTIC: Xorg initial state (non-blocking, after splash is visible) ──
 log "[DIAG] xrandr after Xorg start:"
 DISPLAY=:0 xrandr 2>/dev/null | grep -E 'connected|\*' | while read -r _line; do log "[DIAG]   $_line"; done
-XORG_RES=$(DISPLAY=:0 xrandr 2>/dev/null | grep '*' | head -1 | awk '{print $1}' || echo "unknown")
-log "Xorg display: ${XORG_RES} (DRM modesetting driver)"
 log "[DIAG] Splash asset: $(wc -c < "$SPLASH_IMG" 2>/dev/null || echo 0) bytes, FBI raw: $(wc -c < "$ANIM_DIR/fbi_boot_1.raw" 2>/dev/null || echo 0) bytes"
-
-# Paint splash on root window IMMEDIATELY — no xrandr before this!
-# (Per KI: "Do not apply xrandr between Xorg startup and first splash paint")
-DISPLAY=:0 display -window root "$SPLASH_IMG" 2>/dev/null
-log "Root window splash painted (${XORG_RES} root, splash=$SPLASH_IMG)"
 
 # ── STAGE 4: "Starting ODS services" ANIMATION (1.5s) ────────────────
 for _f in 1 2 3 4 5; do
@@ -85,20 +102,23 @@ for _f in 1 2 3 4 5; do
     sleep 0.3
 done
 log "Starting ODS services animation complete"
+snap "after_services_anim"
 
 # ── STAGE 5: SETUP (Openbox, display config, metrics) ────────────────
+DISPLAY=:0 xsetroot -solid black 2>/dev/null || true
 xset -dpms 2>/dev/null || true
 xset s off 2>/dev/null || true
 xset s noblank 2>/dev/null || true
 openbox --config-file /etc/ods/openbox-rc.xml &
 unclutter -idle 0.01 -root &
 sleep 0.5
-# Set root to solid black — prevents white flash when xrandr invalidates painted content
+snap "after_openbox_start"
+# Re-blacken after Openbox (it may alter root)
 DISPLAY=:0 xsetroot -solid black 2>/dev/null || true
 # Apply display config AFTER Openbox (proven e417033 pattern).
-# Mode changes happen here, covered by Stage 6 overlay.
 /usr/local/bin/ods-display-config.sh 2>/dev/null || true
 log "Openbox + display config applied"
+snap "after_display_config"
 # ── DIAGNOSTIC: xrandr after display config ──
 log "[DIAG] xrandr after display-config:"
 DISPLAY=:0 xrandr 2>/dev/null | grep -E 'connected|\*' | while read -r _line; do log "[DIAG]   $_line"; done
@@ -115,6 +135,9 @@ if DISPLAY=:0 xrandr 2>/dev/null | grep -q 'HDMI-2 connected'; then
     if echo "$HDMI2_POS" | grep -q '+0+0'; then
         log "HDMI-2 mirrored — extending to right of HDMI-1 at ${HDMI1_W}x0"
         DISPLAY=:0 xrandr --output HDMI-2 --mode "$HDMI2_RES" --pos ${HDMI1_W}x0 2>/dev/null || true
+        # Re-blacken root after xrandr extension (mode change invalidates xsetroot)
+        DISPLAY=:0 xsetroot -solid black 2>/dev/null || true
+        snap "after_hdmi2_extend"
     fi
 fi
 SCREEN_W=$(DISPLAY=:0 xrandr 2>/dev/null | grep '*' | head -1 | awk '{print $1}' | cut -dx -f1)
@@ -138,6 +161,7 @@ gtk-application-prefer-dark-theme=1
 gtk-theme-name=Adwaita-dark
 GTK
 log "Config complete"
+snap "before_overlay_creation"
 
 # ── STAGE 6: ANIMATED OVERLAY + CHROMIUM ─────────────────────────────
 rm -f /tmp/ods-loader-ready /tmp/ods-boot-complete
