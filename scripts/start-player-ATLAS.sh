@@ -15,8 +15,8 @@ rm -f /home/signage/.config/chromium/SingletonLock 2>/dev/null
 ENROLLMENT_FLAG="/var/lib/ods/enrollment.flag"
 
 if [ -f "$ENROLLMENT_FLAG" ]; then
-    echo "[ODS] Device enrolled — loading content directly (fast boot)"
-    START_URL="http://localhost:8080/player_content_manager.html"
+    echo "[ODS] Device enrolled — loading player status (fast boot)"
+    START_URL="http://localhost:8080/player_status.html"
 elif curl -sf --max-time 3 http://connectivitycheck.gstatic.com/generate_204 >/dev/null 2>&1; then
     echo "[ODS] Internet detected — loading player_link for enrollment"
     START_URL="http://localhost:8080/player_link.html"
