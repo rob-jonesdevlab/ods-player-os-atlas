@@ -1,0 +1,23 @@
+{
+    "mode": "dual_hd_portrait",
+    "description": "Dual HD monitors, portrait (rotated left), 1 Chromium per screen",
+    "windows": [
+        {
+            "screen": 0,
+            "position": "fullscreen",
+            "url": "http://localhost:8080/network_setup.html"
+        },
+        {
+            "screen": 1,
+            "position": "fullscreen",
+            "url": "http://localhost:8080/network_setup.html"
+        }
+    ],
+    "monitor_config": {
+        "orientation": "portrait",
+        "mapping": {
+            "screen_0": "HDMI-1",
+            "screen_1": "HDMI-2"
+        }
+    }
+}
